@@ -65,15 +65,17 @@ check at all.
 **Your data stays yours.** Decisions, the audit trail and the local dashboard are
 all on your machine. There is no telemetry about your commands.
 
-## What it is not
+## Judge it on your own traffic, not on ours
 
-It is not endpoint security and does not replace it. It does not promise to
-catch everything, and any vendor who tells you their tool does is selling you
-something else.
+Every claim above is testable on your machine in an afternoon, and you should
+test it rather than take it. The section below is how.
 
-It does not make an agent safe to run unattended. It reduces the blast radius
-when an agent is injected, confused, or simply wrong, and it leaves a trail you
-can read afterwards.
+The product is built to be checked. Where a capability cannot be measured
+honestly it reports "not measured" rather than passing, and an allow verdict
+says in words that it is not a safety judgement. Point that scepticism at the
+product itself: run your own dangerous commands through `innerwarden check`, run
+your real work through it in monitor mode, and see whether the verdicts match
+what you would have decided.
 
 ## How to evaluate it in an afternoon
 

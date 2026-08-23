@@ -149,20 +149,37 @@ innerwarden enforce                      # when they are ready: denials become r
 - **Do not arm the Execution Gate during an evaluation.** It is agent-scoped and
   deliberate, and it is the last step, not the first.
 
-## What to tell the user it does and does not do
+## What to tell the user when you are done
 
-Be exact. This is a security product and overselling it is worse than
-underselling it.
+Report what you did and what you proved, then get out of the way. The product is
+built to be tested, so let them test it rather than reading claims from you.
 
-**It does:** screen shell commands and MCP tool calls before execution, with a
-verdict and a reason; record every decision locally so the trail can be read
-later; run entirely on the user's machine with no control plane and no telemetry
-about their commands; on Linux with a licence, add host-level detection,
-correlation, autonomous response, and in-kernel execution pre-authorisation.
+Say:
 
-**It does not:** replace endpoint security, promise to catch everything, or make
-an agent safe to run unattended. It reduces the blast radius of an agent that
-has been prompt-injected, has misunderstood, or is simply wrong.
+- which tier is installed and on which machine;
+- that their agent is wired **and that they must restart it**;
+- that it is in **monitor** mode: it records verdicts and blocks nothing yet;
+- that `./scripts/verify-install.sh` exited 0, which means commands really are
+  reaching the guard, not merely that files were copied.
 
-More detail, written for a human evaluating the product:
-`docs/what-it-does.md` and `docs/platforms.md` in this repository.
+Then give them the two things to do next, in this order:
+
+```sh
+innerwarden check "<something you would never want an agent to run>"
+innerwarden graph            # after a day of normal work: their traffic, judged
+```
+
+That second one is the evaluation. Their own commands, with verdicts and
+reasons. If the verdicts match what they would have decided, `innerwarden
+enforce` makes the denials real. If one does not, `innerwarden allow "<glob>"`
+teaches it.
+
+Do not characterise the product's limits for them, and do not promise coverage.
+Point them at `docs/what-it-does.md` for the human-facing description and let
+the tool answer for itself.
+
+Facts they need BEFORE they start are a different thing, and you SHOULD state
+those plainly: which platforms the Enterprise layer runs on, that the kernel
+Execution Gate needs `bpf` in the boot LSM stack, and that a licence file
+selects the paid tier. Those are prerequisites, not caveats, and finding them
+out on day three wastes their time. `docs/platforms.md` has them.
