@@ -41,7 +41,7 @@ without changing anything you already learned.
 ## If you would rather type it yourself
 
 ```sh
-npm install -g innerwarden          # free CLI, no sudo, signed
+npm install -g innerwarden          # signed; sudo only if npm's prefix is root-owned
 innerwarden agents connect --all --monitor
 #   ^ now RESTART your agent: the hook is read at agent startup
 ./scripts/verify-install.sh         # prove it, do not assume it
