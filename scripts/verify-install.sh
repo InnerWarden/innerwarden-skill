@@ -31,8 +31,25 @@ if ! command -v innerwarden >/dev/null 2>&1; then
   echo "  Then re-run this script." >&2
   exit 2
 fi
-ok "innerwarden $(innerwarden --version 2>/dev/null | head -1)"
-printf '        at %s\n' "$(command -v innerwarden)"
+# On PATH is not the same as working. `innerwarden uninstall` can leave the npm
+# shim behind pointing at a deleted binary, and the shim then answers
+#   "no prebuilt binary for linux-x64" ... and EXITS 0.
+# So the version string is checked for being a version, not merely for arriving.
+ver=$(innerwarden --version 2>/dev/null | head -1)
+case "$ver" in
+  *[0-9].[0-9]*)
+    ok "innerwarden $ver"
+    printf '        at %s\n' "$(command -v innerwarden)"
+    ;;
+  *)
+    echo "  innerwarden is on PATH but does not report a version." >&2
+    echo "  It said: ${ver:-<nothing>}" >&2
+    echo "  A leftover npm shim pointing at a removed binary looks exactly like" >&2
+    echo "  this, and it exits 0, so nothing else here would notice." >&2
+    echo "  Reinstall cleanly:  npm uninstall -g innerwarden && npm install -g innerwarden" >&2
+    exit 2
+    ;;
+esac
 
 # Read the decision counter BEFORE probing. The `check` calls below RECORD
 # decisions, so a later "decisions exist, therefore traffic is flowing" test
