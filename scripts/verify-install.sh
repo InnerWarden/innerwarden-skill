@@ -33,8 +33,15 @@ if ! command -v innerwarden >/dev/null 2>&1; then
 fi
 # On PATH is not the same as working. `innerwarden uninstall` can leave the npm
 # shim behind pointing at a deleted binary, and the shim then answers
-#   "no prebuilt binary for linux-x64" ... and EXITS 0.
-# So the version string is checked for being a version, not merely for arriving.
+#   "no prebuilt binary for linux-x64. Supported platforms: linux, ... x64 ..."
+# which names the running platform as unsupported one line after saying there is
+# no binary for it. A reader concludes the product does not support their
+# machine; the real cause is that uninstall removed it.
+#
+# The shim exits 1, so a caller that checks the status catches it. A caller that
+# pipes to `head` reads HEAD's exit code and sees 0, which is how this was first
+# mis-reported here. Checking the string is what makes the report right either
+# way.
 ver=$(innerwarden --version 2>/dev/null | head -1)
 case "$ver" in
   *[0-9].[0-9]*)
@@ -45,7 +52,7 @@ case "$ver" in
     echo "  innerwarden is on PATH but does not report a version." >&2
     echo "  It said: ${ver:-<nothing>}" >&2
     echo "  A leftover npm shim pointing at a removed binary looks exactly like" >&2
-    echo "  this, and it exits 0, so nothing else here would notice." >&2
+    echo "  this, and its message blames your platform rather than the missing file." >&2
     echo "  Reinstall cleanly:  npm uninstall -g innerwarden && npm install -g innerwarden" >&2
     exit 2
     ;;
