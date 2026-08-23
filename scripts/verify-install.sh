@@ -106,6 +106,35 @@ if [ "$fail" -gt 0 ]; then
 fi
 
 echo
+echo "== 2b. does a deny actually become a BLOCK =="
+#
+# Section 2 asked the ENGINE for an opinion. This runs the ADAPTER: the thing
+# that turns a verdict into a refusal an agent obeys. They are different pieces
+# and only this one stops a command. Without it the script could report
+# "commands are being judged before they run" having never watched one be
+# refused.
+printf '{"tool_input":{"command":"rm -rf /"}}' | innerwarden hook >/dev/null 2>&1
+hook_rc=$?
+if [ "$hook_rc" -eq 2 ]; then
+  ok "the hook REFUSES a denied command (exit 2, which is what an agent obeys)"
+elif [ "$hook_rc" -eq 0 ]; then
+  bad "a denied command was NOT refused" \
+      "The engine says deny and the adapter let it through. Nothing is being
+        stopped, whatever the wiring says."
+else
+  bad "the hook exited $hook_rc, which is neither a block nor a pass" \
+      "Try it directly: printf '{\"tool_input\":{\"command\":\"rm -rf /\"}}' | innerwarden hook"
+fi
+
+printf '{"tool_input":{"command":"rm -rf /"}}' | innerwarden hook --monitor >/dev/null 2>&1
+if [ $? -eq 0 ]; then
+  ok "monitor mode blocks nothing, as promised (exit 0)"
+else
+  bad "monitor mode refused a command; it is supposed to record only" \
+      "A monitor-mode guard that blocks is how a pilot loses a week."
+fi
+
+echo
 echo "== 3. is any agent actually wired to it =="
 #
 # THE question, and the one an install can pass while failing. Everything above
@@ -166,6 +195,20 @@ if command -v innerwarden-ctl >/dev/null 2>&1; then
     [ -n "$state" ] || state="not-installed"
     printf '        %-24s %s\n' "$svc" "$state"
   done
+  # Section 4 could only ever `ok` or `note`, so a REJECTED LICENCE rendered as
+  # "Screening confirmed": the installer only checks the file exists and contains
+  # a signature, and the real gate (expiry, host binding, Ed25519) runs later in
+  # the watchdog, which exits when it fails. A dead watchdog is the visible end
+  # of that, and it is readable without root, which this script deliberately is.
+  if [ "$(systemctl is-active innerwarden-watchdog 2>/dev/null)" != "active" ]; then
+    bad "the Enterprise watchdog is not running" \
+        "The paid controls are off: anti-tamper, Execution Gate, DNS Guard.
+        The usual cause is a licence the installer accepted and the product then
+        rejected: expired, bound to a different machine, or not granting the
+        feature. The installer only checks the file looks like a licence.
+          sudo journalctl -u innerwarden-watchdog -n 50"
+  fi
+
   # An inactive agent is NOT necessarily a fault. On a hardened host the watchdog
   # owns the agent's lifecycle and starts it; the unit reads inactive while the
   # process is running and supervised. Do not "fix" this with systemctl start.
@@ -201,5 +244,15 @@ if [ "$fail" -gt 0 ]; then
   echo "  Each FAIL above names the command that fixes it."
   exit 1
 fi
-echo "  Screening confirmed: $pass checks passed${warn:+, $warn note(s)}."
-echo "  Commands from a wired agent are being judged before they run."
+if [ "${decisions_before:-0}" -gt 0 ]; then
+  echo "  Screening confirmed: $pass checks passed${warn:+, $warn note(s)}."
+  echo "  The guard refuses what it denies, an agent is wired, and traffic has"
+  echo "  reached it."
+else
+  echo "  Wiring confirmed: $pass checks passed${warn:+, $warn note(s)}."
+  echo "  The guard refuses what it denies and an agent is wired. NO agent traffic"
+  echo "  has reached it yet, so nothing here proves the running agent is going"
+  echo "  through it."
+  echo "  Restart the agent, run one command in it, then re-run this script."
+  echo "  THAT is the proof."
+fi

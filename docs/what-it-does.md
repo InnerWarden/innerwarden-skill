@@ -18,8 +18,9 @@ is what people actually do.
 
 ## What it puts in the way
 
-A screening step between the agent and execution. Every shell command and MCP
-tool call gets a verdict before it runs:
+A screening step between the agent and execution. What the agent tries gets a
+verdict before it runs, over whichever surface that agent exposes: a
+pre-execution hook for Claude Code, the MCP path for Cursor, Codex and Gemini.
 
 - **allow** with a reason,
 - **review** when it is ambiguous and a human should look,

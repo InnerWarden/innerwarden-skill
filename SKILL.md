@@ -6,8 +6,14 @@ description: Install, wire and verify InnerWarden, the runtime guardrail that sc
 # Installing and verifying InnerWarden
 
 You are setting up a guardrail that sits between an AI agent and the machine it
-can act on. Every shell command and MCP tool call the agent tries is screened
-first and comes back **allow**, **review** or **deny**.
+can act on. What the agent tries is screened first and comes back **allow**,
+**review** or **deny**.
+
+Which surface that covers depends on the agent, and it is one or the other, never
+both. Claude Code takes a pre-execution hook on its Bash tool calls. Cursor,
+Codex, Gemini and OpenClaw have no such hook, so the guard rewrites their MCP
+configuration to run through its proxy instead. `innerwarden agents list` names
+the mechanism it used for each one, and you should read it rather than assume.
 
 There are two tiers and they are the same command:
 
@@ -47,17 +53,32 @@ blocks something legitimate on day one gets uninstalled on day two.
 npm install -g innerwarden
 ```
 
-No sudo, no postinstall script, prebuilt and signed. If npm is not available:
+Prebuilt and signed, no postinstall script, nothing fetched at install time.
+
+InnerWarden itself never needs root. `npm install -g` needs write access to
+npm's prefix, and on a distro-packaged Node that prefix is root-owned. **If it
+fails with EACCES that is npm, not the product**, and re-running it will not
+help:
 
 ```sh
-# Debian / Ubuntu
-sudo apt install ./innerwarden_<version>_amd64.deb
-# Fedora / RHEL / Rocky
-sudo dnf install ./innerwarden-<version>-1.x86_64.rpm
+sudo npm install -g innerwarden
+# or give npm a prefix the user owns:
+npm config set prefix ~/.npm-global   # then put ~/.npm-global/bin on PATH
 ```
 
-Both are attached to the release at
-<https://github.com/InnerWarden/innerwarden-releases/releases>.
+If Node is not present at all:
+
+```sh
+# macOS and Linux: picks the right signed binary for the machine and verifies it
+curl -fsSL https://innerwarden.com/free | sh
+# Windows
+irm https://innerwarden.com/free.ps1 | iex
+```
+
+`.deb`, `.rpm`, Scoop and from-source, with the current version and both
+architectures, are at <https://innerwarden.com/docs/installation>. Do not copy a
+version-pinned filename into this file: it is stale the next release, which is
+the same reason this skill reads verbs from `--help` instead of listing them.
 
 Confirm before continuing:
 
@@ -75,8 +96,31 @@ innerwarden agents connect --all --monitor     # wire everything, record only
 Then tell the user, in these words: **restart your agent now, or it is still
 running unscreened.**
 
+`connect` picks ONE mechanism per agent and prints which. To put the guard in
+front of an MCP server it did not wire, including servers Claude Code runs,
+substitute the server's own command in that agent's MCP config:
+
+```sh
+innerwarden proxy --mode advisory -- <server command>   # monitor week
+innerwarden proxy --mode guard    -- <server command>   # once they enforce
+```
+
+**If `connect` says an agent "does not exist yet" or "has no local MCP servers
+to guard", it cannot be auto-wired and running the command again changes
+nothing. Stop looping.** That machine reaches a wired state by adding the MCP
+server the user actually runs and reconnecting, by wrapping one with `proxy`
+above, or by running the agent under `innerwarden contain -- <command>`.
+
 For an agent on another machine, in a container, or in CI, the local hook does
 not apply. Read `docs/protecting-a-remote-agent.md` in this repository.
+
+Set up alerts now, while you are here. It takes two commands and the second one
+is not optional:
+
+```sh
+innerwarden notify --telegram-token <T> --telegram-chat <C>   # or --slack-webhook <URL>
+innerwarden notify --test
+```
 
 ### 3. Add the Enterprise host layer, if there is a licence
 
@@ -87,11 +131,51 @@ curl -fsSL https://innerwarden.com/install | sudo bash -s -- --license=/path/to/
 ```
 
 The `=` matters. `--license /path` with a space is **rejected**, deliberately, so
-a mistyped flag can never quietly leave the host on the free tier. The flag also
-accepts an `https://` URL.
+a mistyped flag can never quietly leave the host on the free tier.
 
-It comes up in observe-only mode. It watches, explains what it sees, and blocks
-nothing until the user decides otherwise.
+The value must be a **local file path**. The installer's own `--help` says it
+accepts an `https://` URL; it does not, it tests `-f` on the value and exits 1.
+If the licence arrived as a link, fetch it first:
+
+```sh
+curl -fsSL <url> -o /tmp/license.key
+```
+
+The HOST LAYER comes up in observe-only: it watches the machine, explains what
+it sees, and blocks nothing until the user decides otherwise.
+
+**The agent hook it installs is a different matter, and this will bite you.**
+The installer also runs `innerwarden-ctl agent install-hook` unconditionally and
+appends a SECOND `PreToolUse` entry to `~/.claude/settings.json`, beside the
+monitor one from step 2. That hook is not governed by `--monitor` and it BLOCKS:
+
+- exit 2 on a deny verdict;
+- exit 2 on **every** command whenever nothing answers on 127.0.0.1:8787,
+  because it fails closed.
+
+So after this step the user is not in monitor mode, whatever step 2 configured,
+and if the host agent is restarting or down their coding agent stops entirely.
+
+Check it, and tell the user the number:
+
+```sh
+grep -c agent_command_guard ~/.claude/settings.json
+```
+
+For a monitor-first pilot, take it back off until they choose to enforce:
+
+```sh
+innerwarden-ctl agent install-hook --remove
+```
+
+That removes only its own script, so the free monitor hook from step 2 survives.
+
+**On Debian and Ubuntu without `bpf` in the LSM stack, the installer edits the
+bootloader.** It writes `/etc/default/grub.d/99-innerwarden-lsm.cfg`, runs
+`update-grub`, preserves the existing stack, and prints REBOOT REQUIRED. It
+never reboots. Say this to the user BEFORE you run the installer, not after: it
+is a change to how their machine boots. No kernel control can enforce until they
+reboot.
 
 ### 4. Prove it, do not assume it
 
@@ -127,16 +211,28 @@ The ones worth showing a new user, in this order:
 innerwarden status                       # is it on, and is it screening anything
 innerwarden check "rm -rf /"             # ask for a verdict directly
 innerwarden graph                        # what has been screened, and how it ended
-innerwarden dashboard                    # local UI, read-only, optional
 innerwarden notify                       # Telegram, Slack, Discord, webhook
 innerwarden allow "<glob>"               # stop it asking about a trusted command
-innerwarden enforce                      # when they are ready: denials become real
+innerwarden enforce                      # denials become real, THEN restart the agents
 ```
+
+`innerwarden dashboard` is not in that list because it is a **foreground
+server**, not a one-shot command: it does not return. Background it or give it a
+terminal the user owns, then open <http://127.0.0.1:8788>. On the cloud VM or
+container that `docs/platforms.md` calls the normal deployment, reach it with
+`ssh -L 8788:127.0.0.1:8788 <host>`. Never expose it: it publishes decisions,
+detected agents and modes with no auth. Note that `innerwarden status` probes
+8787 for a dashboard and will report it as not running whatever the dashboard is
+doing; confirm with `curl -s http://127.0.0.1:8788/api/meta` instead.
 
 ## Things that will cost you an hour if you skip them
 
-- **A wired agent that was not restarted is not protected.** Check
-  `innerwarden agents list`, not your memory of having run `connect`.
+- **Every mode change needs a restart, not just the first wiring.** `connect`,
+  `dry-run` and `enforce` all print "Restart guarded agents so they reload their
+  hook or MCP configuration". Read that line back to the user each time,
+  especially for `enforce`, which is the moment the pilot has been building to.
+  `innerwarden agents list` reads the config file on disk, so it shows the new
+  mode instantly and is NOT evidence the running session picked it up.
 - **Counting screening decisions does not prove traffic is flowing.** Running
   `innerwarden check` yourself records decisions. The verify script reads that
   counter *before* it probes, for exactly this reason.
@@ -148,6 +244,26 @@ innerwarden enforce                      # when they are ready: denials become r
   with `grep bpf /sys/kernel/security/lsm`.
 - **Do not arm the Execution Gate during an evaluation.** It is agent-scoped and
   deliberate, and it is the last step, not the first.
+
+## Removing it
+
+A pilot has an end date, so know this before it starts.
+
+```sh
+innerwarden agents disconnect --all   # FIRST, and not optional
+# restart every agent that was connected
+npm uninstall -g innerwarden          # or: sudo apt remove innerwarden / sudo dnf remove innerwarden
+rm -rf ~/.config/innerwarden          # local state and the decision log
+```
+
+The first line is not optional because a full `innerwarden uninstall` unwires
+Claude Code only. Every other agent was wired by rewriting its MCP config to
+call the guard binary by absolute path, so removing the binary without
+disconnecting leaves those servers pointing at a path that no longer exists, and
+the command that would have fixed it went with the binary.
+
+For the Enterprise host layer: `innerwarden-ctl uninstall` (add `--purge` to drop
+config and data too).
 
 ## What to tell the user when you are done
 

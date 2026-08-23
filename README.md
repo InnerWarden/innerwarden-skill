@@ -20,8 +20,11 @@ Your agent has a shell. That is the point of it, and it is also the exposure. It
 can be prompt-injected by a file it reads or a page it fetches, and it can simply
 be wrong about a path.
 
-InnerWarden screens every shell command and MCP tool call **before it runs** and
-returns **allow**, **review** or **deny**, with the reasons. The verdict is
+InnerWarden screens what the agent tries **before it runs** and returns
+**allow**, **review** or **deny**, with the reasons. Claude Code is covered by a
+pre-execution hook on its Bash calls; Cursor, Codex and Gemini have no such
+hook, so their MCP configuration is wired through the guard's proxy instead.
+`innerwarden agents list` names the mechanism it used. The verdict is
 computed on your machine: no command is sent anywhere for a judgement, there is
 no account, and no service has to be reachable for the guard to work.
 
