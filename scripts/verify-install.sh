@@ -145,7 +145,16 @@ echo "== 3. is any agent actually wired to it =="
 # Measured by asking which agents are WIRED, not by counting decisions: the
 # probes above create decisions, so counting them would be this script reading
 # its own footprints.
-agents_out=$(innerwarden agents list 2>/dev/null)
+# Under sudo, HOME is root's and the agent configs are in the invoking user's
+# home, so a sudo run reported "no AI agents were found on this machine at all"
+# on a machine with a wired agent. Section 4 wants root, section 3 wants the
+# user; ask as the user when there is one.
+if [ -n "${SUDO_USER:-}" ] && [ "$(id -u)" = 0 ]; then
+  agents_out=$(su -l "$SUDO_USER" -c 'innerwarden agents list' 2>/dev/null)
+  printf '        (asked as %s, not root: the hooks live in their home)\n' "$SUDO_USER"
+else
+  agents_out=$(innerwarden agents list 2>/dev/null)
+fi
 wired=$(printf '%s' "$agents_out" | grep -c 'guarded' 2>/dev/null)
 unwired=$(printf '%s' "$agents_out" | grep -c 'not guarded' 2>/dev/null)
 wired=$((wired - unwired))
@@ -200,12 +209,21 @@ if command -v innerwarden-ctl >/dev/null 2>&1; then
   # a signature, and the real gate (expiry, host binding, Ed25519) runs later in
   # the watchdog, which exits when it fails. A dead watchdog is the visible end
   # of that, and it is readable without root, which this script deliberately is.
-  if [ "$(systemctl is-active innerwarden-watchdog 2>/dev/null)" != "active" ]; then
-    bad "the Enterprise watchdog is not running" \
+  # Only demanded when a licence is actually on the host. The installer puts
+  # innerwarden-ctl on a FREE host too, so "ctl is present" never meant "paid",
+  # and this accused a rejected licence on a machine that had none. An absent
+  # watchdog with no licence is the free tier working correctly.
+  if [ ! -f /etc/innerwarden/license.key ]; then
+    note "no licence on this host, so the paid controls are correctly absent" \
+         "The host layer's free half is installed and running. To add the paid
+        controls: curl -fsSL https://innerwarden.com/install | sudo bash -s -- \\
+          --license=/path/to/license.key"
+  elif [ "$(systemctl is-active innerwarden-watchdog 2>/dev/null)" != "active" ]; then
+    bad "there is a licence on this host and the Enterprise watchdog is not running" \
         "The paid controls are off: anti-tamper, Execution Gate, DNS Guard.
-        The usual cause is a licence the installer accepted and the product then
-        rejected: expired, bound to a different machine, or not granting the
-        feature. The installer only checks the file looks like a licence.
+        The installer only checks the file looks like a licence; expiry, host
+        binding and the signature are checked later, and the watchdog exits when
+        they fail.
           sudo journalctl -u innerwarden-watchdog -n 50"
   fi
 
