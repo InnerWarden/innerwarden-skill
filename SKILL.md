@@ -148,12 +148,32 @@ innerwarden notify --test
 
 Linux only. The user will have been issued a `license.key` file.
 
+> **Installing on a REMOTE server, or asked for the Active Defence dashboard?**
+> Read [`docs/active-defence-on-a-server.md`](docs/active-defence-on-a-server.md)
+> instead of this section and follow it exactly. It covers what to ask the user
+> for before you start, the sudo-password case you cannot solve from a script,
+> the dashboard and its SSH tunnel, and the one mistake that locks the user's
+> terminal so hard that Ctrl+C does not work.
+
 ```sh
 curl -fsSL https://innerwarden.com/install | sudo bash -s -- --license=/path/to/license.key
 ```
 
 The `=` matters. `--license /path` with a space is **rejected**, deliberately, so
 a mistyped flag can never quietly leave the host on the free tier.
+
+**Never give that command a terminal it did not need.** When it finishes it tries
+to launch an interactive setup wizard through `sudo`, and modern sudo ships
+`Defaults use_pty`: the wizard renders on a pty `sudo` created while the user
+types into a different one. Arrow keys print as `^[[B`, ENTER does nothing, and
+**Ctrl+C does not work**. Run it over `ssh` WITHOUT `-t`, or with stdin closed
+(`< /dev/null`), and the installer detects there is no usable tty and skips the
+wizard, which is the outcome you want. Everything that matters is configured
+before the wizard would run.
+
+If a user reports a frozen terminal after installing: press ENTER, then `~`,
+then `.` (the SSH escape). Then finish with `sudo innerwarden-ctl setup` run
+directly in their own shell, where sudo inherits the existing pty.
 
 The value must be a **local file path**. The installer's own `--help` says it
 accepts an `https://` URL; it does not, it tests `-f` on the value and exits 1.

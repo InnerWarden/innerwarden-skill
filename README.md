@@ -139,6 +139,7 @@ not installed, `3` installed but judging wrongly.
 | [`docs/what-it-does.md`](docs/what-it-does.md) | a human deciding whether to run it |
 | [`docs/platforms.md`](docs/platforms.md) | what runs where, and the kernel requirements |
 | [`docs/protecting-a-remote-agent.md`](docs/protecting-a-remote-agent.md) | agents in the cloud, in containers, or in CI |
+| [`docs/active-defence-on-a-server.md`](docs/active-defence-on-a-server.md) | installing the licensed host layer on someone's server, and its dashboard |
 
 ---
 
