@@ -1,7 +1,16 @@
 ---
 name: innerwarden
-description: Install, wire and verify InnerWarden, the runtime guardrail that screens an AI agent's shell commands and tool calls before they run. Use when the user asks to install InnerWarden, protect an agent, add the Enterprise host layer with a licence, or check whether the guard is actually screening anything.
+description: Install, wire and verify InnerWarden. Two jobs: screening an AI agent's shell commands and tool calls on a machine, and installing the licensed Active Defence host layer on a Linux server (with its dashboard). Use when the user asks to install InnerWarden, protect an agent, install Enterprise or Active Defence on a server with a licence, reach the dashboard, or check whether the guard is actually screening anything.
 ---
+
+> **Installing on a SERVER, or Enterprise / Active Defence, or a licence, or the
+> dashboard?** Stop and read
+> [`docs/active-defence-on-a-server.md`](docs/active-defence-on-a-server.md)
+> instead, and follow it start to finish. That is a different product from this
+> page and the paths diverge at the first command. Anything on this page about
+> the host layer is a summary of that document, not a substitute for it.
+>
+> **If the user handed you an `ssh` command, they mean the server.**
 
 # Installing and verifying InnerWarden
 
