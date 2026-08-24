@@ -461,4 +461,7 @@ hash -r
   (`[ai.warden] enabled = true`, `provider = "local_warden"`) and leaves the
   external `[ai]` disabled. Tell the operator the external provider is an
   optional upgrade, not a missing step.
-- **`innerwarden-ctl license status` does not exist.** Use `arm --check`.
+- **The licence verbs are on `innerwarden-config-sign`, not `innerwarden-ctl`.**
+  `innerwarden-ctl license` answers `unrecognized subcommand`;
+  `innerwarden-config-sign license status` is the one that reports customer,
+  host binding, expiry and per-feature state. See step 4.
