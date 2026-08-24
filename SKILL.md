@@ -36,9 +36,15 @@ the user learns in the free tier is thrown away when they add a licence.
 
 ## Read this before you type anything
 
-**Install the free CLI first, always.** It is the front door. The Enterprise
-installer expects it and the user's muscle memory is built on it. Do not start
-with the host installer even when a licence is in hand.
+**On the machine the user works at, install the free CLI first.** It is the
+front door and their muscle memory is built on it.
+
+**On a SERVER, do not.** The Enterprise installer installs the free CLI itself
+as part of its run (it prints `installing the free InnerWarden CLI` and then the
+path it used), so installing it first is a step that undoes nothing and delays
+the thing they asked for. Follow
+[`docs/active-defence-on-a-server.md`](docs/active-defence-on-a-server.md),
+which starts with the host installer on purpose.
 
 **`innerwarden setup` is safe for you to run.** It is an arrow-key wizard for
 humans, and it prints a summary instead of prompting when stdin is not a

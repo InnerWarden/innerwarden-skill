@@ -10,6 +10,17 @@ operator's side if you get them wrong, and one of them can lock their terminal.
 
 ---
 
+## Every command below assumes this
+
+Set it once, from what the operator gives you in item 1, and use `$SSH`
+throughout. Every `ssh` line in this document is written that way, because
+writing them as `ssh <user>@<host>` invites dropping the `-i <key>` and failing
+on any host that is not in `~/.ssh/config`.
+
+```sh
+SSH="ssh -i <key> <user>@<host>"
+```
+
 ## Before you run a single command, ASK
 
 Do not guess any of these. Ask for each one at the moment you need it, in plain
@@ -22,7 +33,7 @@ needs one, hand the operator the command and let them run it.
 
 1. **The server.** Address or hostname, the SSH user, and the private key path if
    it is not their default. You need to be able to run
-   `ssh <user>@<host> 'echo ok'` and see `ok`.
+   `$SSH 'echo ok'` and see `ok`.
 2. **The licence file.** Active Defence is licensed; without a licence file this
    install does not happen and you should stop and say so. Ask where the file is
    **on the operator's machine**. It is JSON, usually called `license.key`, and
@@ -32,7 +43,7 @@ needs one, hand the operator the command and let them run it.
    install can run unattended at all. Check it rather than asking them to guess:
 
    ```sh
-   ssh <user>@<host> 'sudo -n true 2>&1 || echo NEEDS_PASSWORD'
+   $SSH 'sudo -n true 2>&1 || echo NEEDS_PASSWORD'
    ```
 
    If it prints `NEEDS_PASSWORD`, **stop**. You cannot type a sudo password into
@@ -50,20 +61,39 @@ needs one, hand the operator the command and let them run it.
 
 ## 1. Preflight: read the machine before changing it
 
+One command answers most of what you would otherwise have to ask:
+
 ```sh
-ssh <user>@<host> 'uname -m; uname -r; . /etc/os-release && echo "$PRETTY_NAME"'
-ssh <user>@<host> 'grep -o bpf /sys/kernel/security/lsm || echo "NO-BPF"'
-ssh <user>@<host> 'df -h / | tail -1'
+$SSH 'uname -m; uname -r; . /etc/os-release && echo "$PRETTY_NAME"
+      grep -o bpf /sys/kernel/security/lsm || echo NO-BPF
+      df -h / | awk "NR==2{print \$4\" free\"}"
+      sudo -n true 2>/dev/null && echo "SUDO-OK" || echo "SUDO-NEEDS-PASSWORD"
+      cat /etc/machine-id 2>/dev/null || echo "no machine-id"'
 ```
 
-Report back to the operator, in plain words:
+Read every line of the answer before continuing:
 
-- **Architecture must be x86_64 or aarch64.** Anything else, stop.
-- **`NO-BPF` means the installer will edit the bootloader** and a reboot is
-  needed before any kernel control can enforce. Detection and response still
-  work without it. Get the operator's agreement before continuing.
+- **Architecture must be x86_64 or aarch64.** Anything else, stop and say so.
+- **`NO-BPF`** means the installer will edit the bootloader and the machine needs
+  a reboot before any kernel control can enforce. Detection and response work
+  without it. Tell the operator BEFORE installing and get their agreement, and
+  see "Where the reboot goes" below.
+- **`SUDO-NEEDS-PASSWORD`**: stop. You cannot type a sudo password into a
+  non-interactive SSH session, `-t` is forbidden here (step 3), and you must
+  never ask the operator to give you their password. Hand them the command from
+  step 3 to run in their own terminal, or ask them to add a NOPASSWD rule.
 - **Under ~2 GB free** is tight: the installer downloads an on-device model of
   about 87 MB plus the binaries.
+- **The machine-id** matters only if the licence is host-bound. Keep it; step 2
+  compares against it.
+
+### Where the reboot goes
+
+If preflight said `NO-BPF`, the sequence is: install (step 3) → verify services
+and licence (step 4) → tell the operator a reboot is required and why → they
+reboot → **re-run step 4** → dashboard (step 6). Do not arm anything before the
+reboot and do not describe kernel enforcement as available until after it. The
+installer never reboots by itself and neither should you.
 
 ## 2. Get the licence, and check it before you trust it
 
@@ -115,25 +145,46 @@ the message to the operator: a truncated signature and an expired licence are
 both things only they can fix, and both fail confusingly later.
 
 `"host": "*"` is a site licence and runs anywhere. **Any other value binds the
-licence to one machine**, matched against that host's `/etc/machine-id`; install
-it on a different box and the installer refuses. If `host` is not `*`, say so to
-the operator now and confirm this is the intended machine.
+licence to one machine**, and it is compared against that host's
+`/etc/machine-id`. You read the machine-id in preflight, so compare them
+yourself now rather than discovering the mismatch when the installer refuses:
 
-Then copy it over and confirm it survived the trip:
+```sh
+# only when host is not "*"
+$SSH 'cat /etc/machine-id'      # must equal the licence's "host" value
+```
+
+If they differ, stop: the operator has been given a licence for a different
+machine and only they can resolve it.
+
+Then copy it over, lock it down, and confirm it survived the trip:
 
 ```sh
 scp -i <key> <local-licence-path> <user>@<host>:/tmp/license.key
-ssh <user>@<host> 'head -c 40 /tmp/license.key; echo'
+$SSH 'chmod 600 /tmp/license.key; head -c 40 /tmp/license.key; echo'
 ```
 
-That last line is not decoration. A licence downloaded from behind a login
-arrives as an HTML page, and you want to see `{"customer_id"` now rather than a
-confusing failure in three minutes.
+`chmod 600` because `/tmp` is world-readable and a licence is a credential. The
+`head` is not decoration: a licence downloaded from behind a login arrives as an
+HTML page, and you want to see `{"customer_id"` now rather than a confusing
+failure in three minutes.
+
+**If `python3` is missing** (common on minimal cloud images), do the validation
+on your own machine before the `scp` instead. Never skip it.
+
+Delete both scratch files once step 4 confirms the licence was accepted:
+
+```sh
+$SSH 'rm -f /tmp/license.key /tmp/lic-check.py'
+```
+
+The installer copies the licence to `/etc/innerwarden/license.key`, so the one in
+`/tmp` is a leftover with no further use.
 
 ## 3. Install, WITHOUT a terminal
 
 ```sh
-ssh <user>@<host> 'curl -fsSL https://innerwarden.com/install | sudo bash -s -- --license=/tmp/license.key'
+$SSH 'curl -fsSL https://innerwarden.com/install | sudo bash -s -- --license=/tmp/license.key'
 ```
 
 Two things about this command are load-bearing.
@@ -162,8 +213,8 @@ bug. Tell them: press ENTER, then `~`, then `.`
 The installer prints a success banner. Confirm the machine agrees:
 
 ```sh
-ssh <user>@<host> 'for u in innerwarden-sensor innerwarden-watchdog innerwarden-dns-guard; do printf "%-26s %s\n" "$u" "$(systemctl is-active $u 2>&1)"; done'
-ssh <user>@<host> 'innerwarden-ctl --version'
+$SSH 'for u in innerwarden-sensor innerwarden-watchdog innerwarden-dns-guard; do printf "%-26s %s\n" "$u" "$(systemctl is-active $u 2>&1)"; done'
+$SSH 'innerwarden-ctl --version'
 ```
 
 Expect `active` for all three.
@@ -177,7 +228,7 @@ thing to do and it looks like a fault.
 Now confirm the licence was accepted:
 
 ```sh
-ssh <user>@<host> 'sudo innerwarden-ctl arm --check'
+$SSH 'sudo innerwarden-ctl arm --check'
 ```
 
 Look for a line reading `licence   present, N feature(s) granted`. **There is no
@@ -192,7 +243,7 @@ step 5.
 
 ## 5. Read `arm --check`, but do not get stuck on it
 
-A fresh install reports, under "Fixing first":
+A fresh install reports, under "Fixing first", **exactly this and only this**:
 
 ```
 - repair dashboard-bind: agent.toml does not declare [dashboard] bind, so
@@ -200,16 +251,21 @@ A fresh install reports, under "Fixing first":
   talking about
 ```
 
-**This is a warning, not a blocker, and on a default install the dashboard works
-anyway.** Verified on a clean Ubuntu 26.04 host: with that line present, the
-dashboard still served correctly on its default port. Mention it to the operator
-as a known cosmetic gap and carry on. Do not go hunting for a repair command and
-do not let it stop you delivering a working dashboard.
+**That specific line is a cosmetic warning, not a blocker.** Verified on a clean
+Ubuntu 26.04 host: with it present, the dashboard still served correctly and
+answered 401/200 as designed. Mention it to the operator as a known gap and
+carry on. Do not go hunting for a repair command for it.
+
+**Anything else under "Fixing first" is NOT covered by that exemption.** Match
+the text: if the line is about `dashboard-bind`, proceed; if it is about
+anything else, stop, read it to the operator, and do not continue until you both
+understand it. "The doc said warnings are fine" is not a reason to walk past a
+message you have not read.
 
 ## 6. Bring up the dashboard
 
 ```sh
-ssh <user>@<host> 'sudo innerwarden-ctl dashboard login'
+$SSH 'sudo innerwarden-ctl dashboard login'
 ```
 
 It prints a username and a generated password, **once**:
@@ -225,11 +281,19 @@ them into a shared or logged channel. It also restarts the watchdog to apply the
 change, which is expected.
 
 ```sh
-ssh <user>@<host> 'sudo innerwarden-ctl dashboard'
+$SSH 'sudo innerwarden-ctl dashboard'
 ```
 
-This prints the bind, the exposure and the tunnel. Four things about it that
-will otherwise cost you the demo, all confirmed on a real host:
+**This is a status command. It prints and exits; it does not serve anything and
+it will not hang your session.** The dashboard itself is served by the installed
+stack and is already listening before you run this, so it survives your SSH
+connection closing. Do NOT background it, do not wrap it in `nohup` or
+`systemd-run`, and do not leave an SSH session open "to keep it alive". (The
+FREE CLI's `innerwarden dashboard` is the opposite: that one IS a foreground
+server and does not return. Two different commands, one word apart.)
+
+It prints the bind, the exposure and the tunnel. Four things about it that will
+otherwise cost you the demo, all confirmed on a real host:
 
 - **It is HTTPS, not HTTP.** `http://` gets you a connection failure that looks
   like nothing is listening. The certificate is self-signed, so a browser shows
@@ -248,13 +312,57 @@ will otherwise cost you the demo, all confirmed on a real host:
 Prove it serves before you say it is ready:
 
 ```sh
-ssh <user>@<host> 'curl -sk -o /dev/null -w "%{http_code}\n" https://127.0.0.1:8787/'
-ssh <user>@<host> 'curl -sk -o /dev/null -w "%{http_code}\n" -u admin:<password> https://127.0.0.1:8787/'
+$SSH 'curl -sk -o /dev/null -w "%{http_code}\n" https://127.0.0.1:8787/'
+$SSH 'curl -sk -o /dev/null -w "%{http_code}\n" -u admin:<password> https://127.0.0.1:8787/'
 ```
 
 Expect **401** then **200**. The 401 is the point: the dashboard is fail-closed
 and refuses anyone without the login. If the first returns 200, stop and tell the
 operator, because the login did not take.
+
+## 6b. One command that either passes or does not
+
+The agent path has `verify-install.sh` and exits 0 or it does not. The server
+path needs the same bar, because "read the output back to them" is exactly the
+softer standard that lets a broken install be reported as done. Run this and
+require `ALL CHECKS PASSED`:
+
+```sh
+$SSH 'bash -s' <<'EOF'
+fail=0
+chk() { printf "  %-34s %s\n" "$1" "$2"; [ "$2" = "$3" ] || { echo "        expected: $3"; fail=1; }; }
+
+for u in innerwarden-sensor innerwarden-watchdog innerwarden-dns-guard; do
+  chk "$u" "$(systemctl is-active $u 2>&1)" "active"
+done
+# innerwarden-agent is deliberately NOT checked: the watchdog owns its
+# lifecycle and the unit reads 'inactive' on a correct paid install.
+
+chk "licence accepted" \
+    "$(sudo innerwarden-ctl arm --check 2>/dev/null | grep -qiE 'licence +present|license +present' && echo yes || echo no)" \
+    "yes"
+
+chk "dashboard refuses without login" \
+    "$(curl -sk -o /dev/null -w '%{http_code}' https://127.0.0.1:8787/)" "401"
+
+echo
+[ "$fail" -eq 0 ] && echo "  ALL CHECKS PASSED" || echo "  FAILED - do not report success"
+exit "$fail"
+EOF
+```
+
+The 401 is a real check, not a formality: it proves the dashboard is up AND that
+it is fail-closed. A 200 there means the login did not take and the dashboard is
+open to anyone who reaches the port. A `000` means you used `http://` instead of
+`https://`, or nothing is listening.
+
+Add the authenticated check once you have the password from step 6:
+
+```sh
+$SSH 'curl -sk -o /dev/null -w "%{http_code}\n" -u admin:<password> https://127.0.0.1:8787/'
+```
+
+Expect **200**.
 
 ## 7. Give the operator the tunnel, and say where to run it
 

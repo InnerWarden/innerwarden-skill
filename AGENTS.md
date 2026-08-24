@@ -39,11 +39,13 @@ configured by the time that wizard would have run.
 1. **Ask the user for what only they can give you**, as you need it: the server
    and key, the licence file, whether `sudo` needs a password. Never ask for a
    password or a private key's contents; hand them the command instead.
-2. **Install the free CLI with the shell installer**, not npm:
+2. **Lead with the shell installer for the free CLI:**
    `curl -fsSL https://innerwarden.com/free | sh` (Windows: `irm
-   https://innerwarden.com/free.ps1 | iex`). `npm install -g innerwarden` needs
-   `sudo` on Linux, where npm's prefix is root-owned, and fails with EACCES
-   otherwise.
+   https://innerwarden.com/free.ps1 | iex`). It needs no root. npm is equally
+   supported and carries provenance, but on Linux `npm install -g innerwarden`
+   needs `sudo`, because npm's prefix is root-owned there; without it the user's
+   first command exits EACCES. Offer npm to someone who already lives in npm, and
+   warn them.
 3. **After wiring an agent, tell the user to RESTART it.** The hook is read at
    agent startup, so a session already open stays unscreened. This is the single
    most common reason someone concludes the product does not work.
