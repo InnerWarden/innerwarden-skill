@@ -231,11 +231,25 @@ Now confirm the licence was accepted:
 $SSH 'sudo innerwarden-ctl arm --check'
 ```
 
-Look for a line reading `licence   present, N feature(s) granted`. **There is no
-`innerwarden-ctl license status` subcommand**; `arm --check` is where licence
-state is reported. `arm --check` surveys only and changes nothing, which also
-makes it the best thing to show an operator who wants to see what the paid tier
-knows about their host.
+Look for a line reading `licence   present, N feature(s) granted`. `arm --check`
+surveys only and changes nothing, which also makes it the best thing to show an
+operator who wants to see what the paid tier knows about their host.
+
+For the licence on its own, in detail, the verb is on the **other** binary:
+
+```sh
+$SSH 'sudo innerwarden-config-sign license status'
+$SSH 'sudo innerwarden-config-sign license status --json'   # for you to parse
+```
+
+It reports the customer, whether the host binding matches this machine's
+machine-id, the expiry, each feature as ok or FAIL, and an overall verdict. It
+deliberately reports an expired or wrong-host licence rather than erroring on
+it, so you get a readable answer in exactly the cases that need one.
+
+**`innerwarden-ctl license` does NOT exist** and answers `error: unrecognized
+subcommand 'license'`. The licence verbs live on `innerwarden-config-sign`.
+Two binaries, and the obvious guess is the wrong one.
 
 Read its "Fixing first" section back to the operator. On a fresh install it
 usually reports that `agent.toml` does not declare a dashboard bind, which is
