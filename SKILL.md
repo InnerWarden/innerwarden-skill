@@ -47,6 +47,16 @@ blocks something legitimate on day one gets uninstalled on day two.
 
 ## The sequence
 
+**Be on current versions.** The free CLI is 1.4.1 and the host layer is 0.16.48.
+Older installers of the host layer wired an enforcing hook without asking, and
+the version you get is whatever `innerwarden.com/install` currently serves, so
+check what you actually installed rather than assuming:
+
+```sh
+innerwarden --version        # want 1.4.1 or newer
+innerwarden-ctl --version    # want 0.16.48 or newer, if the host layer is there
+```
+
 ### 1. Install the free CLI
 
 ```sh
@@ -144,31 +154,26 @@ curl -fsSL <url> -o /tmp/license.key
 The HOST LAYER comes up in observe-only: it watches the machine, explains what
 it sees, and blocks nothing until the user decides otherwise.
 
-**The agent hook it installs is a different matter, and this will bite you.**
-The installer also runs `innerwarden-ctl agent install-hook` unconditionally and
-appends a SECOND `PreToolUse` entry to `~/.claude/settings.json`, beside the
-monitor one from step 2. That hook is not governed by `--monitor` and it BLOCKS:
+**Check which mode the agent hook ended up in.** The installer wires its own
+pre-execution hook beside the one from step 2. From 0.16.48 it asks for monitor,
+so it records and refuses nothing, and the installer prints the mode it left
+behind. Read that line back to the user.
 
-- exit 2 on a deny verdict;
-- exit 2 on **every** command whenever nothing answers on 127.0.0.1:8787,
-  because it fails closed.
-
-So after this step the user is not in monitor mode, whatever step 2 configured,
-and if the host agent is restarting or down their coding agent stops entirely.
-
-Check it, and tell the user the number:
+Installers older than 0.16.48 wired an ENFORCING hook here regardless of what
+step 2 chose, and that hook exits 2 on every command whenever the InnerWarden
+agent is not answering. If the user is on an older host, or you are unsure:
 
 ```sh
-grep -c agent_command_guard ~/.claude/settings.json
+grep -c agent_command_guard ~/.claude/settings.json   # is one wired at all
+grep -c "exit 2" ~/.config/innerwarden/agent_command_guard.sh   # 0 means monitor
 ```
 
-For a monitor-first pilot, take it back off until they choose to enforce:
+Non-zero on the second command means it BLOCKS. For a monitor-first pilot, take
+it back off until the user opts into enforcement:
 
 ```sh
-innerwarden-ctl agent install-hook --remove
+innerwarden-ctl agent install-hook --remove   # leaves the step 2 hook alone
 ```
-
-That removes only its own script, so the free monitor hook from step 2 survives.
 
 **On Debian and Ubuntu without `bpf` in the LSM stack, the installer edits the
 bootloader.** It writes `/etc/default/grub.d/99-innerwarden-lsm.cfg`, runs
