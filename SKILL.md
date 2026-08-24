@@ -60,29 +60,41 @@ innerwarden-ctl --version    # want 0.16.48 or newer, if the host layer is there
 ### 1. Install the free CLI
 
 ```sh
+# macOS and Linux
+curl -fsSL https://innerwarden.com/free | sh
+# Windows, in PowerShell
+irm https://innerwarden.com/free.ps1 | iex
+```
+
+This picks the signed binary for the machine, checks its sha256 **and** its
+Ed25519 signature before it installs anything, and puts it in `~/.local/bin`.
+No root at any point, and nothing is fetched or executed at install time beyond
+the binary itself.
+
+If `innerwarden` is not found afterwards, `~/.local/bin` is not on PATH:
+
+```sh
+export PATH="$HOME/.local/bin:$PATH"   # and add that line to the user's shell rc
+```
+
+npm is the other supported channel, carries npm provenance, and is the same
+command on every OS. Prefer it when the user already manages their tools with
+npm, and be ready for this:
+
+```sh
 npm install -g innerwarden
 ```
 
-Prebuilt and signed, no postinstall script, nothing fetched at install time.
-
-InnerWarden itself never needs root. `npm install -g` needs write access to
-npm's prefix, and on a distro-packaged Node that prefix is root-owned. **If it
-fails with EACCES that is npm, not the product**, and re-running it will not
-help:
+**On Linux, expect that to fail with EACCES.** `npm install -g` writes to npm's
+prefix; on a distro-packaged Node that prefix is `/usr/local/lib/node_modules`
+and it is root-owned, so the first command a new user runs exits non-zero.
+Measured on a clean Ubuntu 26.04 machine. That is npm, not the product, and
+re-running it changes nothing:
 
 ```sh
 sudo npm install -g innerwarden
 # or give npm a prefix the user owns:
 npm config set prefix ~/.npm-global   # then put ~/.npm-global/bin on PATH
-```
-
-If Node is not present at all:
-
-```sh
-# macOS and Linux: picks the right signed binary for the machine and verifies it
-curl -fsSL https://innerwarden.com/free | sh
-# Windows
-irm https://innerwarden.com/free.ps1 | iex
 ```
 
 `.deb`, `.rpm`, Scoop and from-source, with the current version and both

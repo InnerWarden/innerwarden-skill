@@ -4,7 +4,7 @@
 
 **Your agent has a shell. This puts a verdict in front of every command it runs.**
 
-[![install](https://img.shields.io/badge/install-npm%20i%20--g%20innerwarden-0b7285?style=flat-square)](https://www.npmjs.com/package/innerwarden)
+[![install](https://img.shields.io/badge/install-curl%20innerwarden.com%2Ffree-0b7285?style=flat-square)](https://innerwarden.com/docs/installation)
 [![platforms](https://img.shields.io/badge/Linux%20%C2%B7%20macOS%20%C2%B7%20Windows-supported-334155?style=flat-square)](docs/platforms.md)
 [![licence](https://img.shields.io/badge/this%20repo-Apache--2.0-334155?style=flat-square)](LICENSE)
 
@@ -73,11 +73,18 @@ without changing anything you already learned.
 ## If you would rather type it yourself
 
 ```sh
-npm install -g innerwarden          # signed; sudo only if npm's prefix is root-owned
+curl -fsSL https://innerwarden.com/free | sh     # signed binary, no root, ~/.local/bin
 innerwarden agents connect --all --monitor
 #   ^ now RESTART your agent: the hook is read at agent startup
-./scripts/verify-install.sh         # prove it, do not assume it
+./scripts/verify-install.sh                      # prove it, do not assume it
 ```
+
+On Windows, `irm https://innerwarden.com/free.ps1 | iex`.
+
+`npm install -g innerwarden` is the other supported channel and adds npm
+provenance, but on Linux it usually needs `sudo`: npm's prefix is root-owned on a
+distro-packaged Node, so it fails with EACCES before InnerWarden is reached.
+InnerWarden itself never needs root.
 
 With an Enterprise licence, on Linux:
 
