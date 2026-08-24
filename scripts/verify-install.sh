@@ -27,7 +27,12 @@ note() { warn=$((warn+1)); printf '  NOTE  %s\n' "$1"; [ -n "$2" ] && printf '  
 echo "== 1. is it installed =="
 if ! command -v innerwarden >/dev/null 2>&1; then
   echo "  innerwarden is not on PATH." >&2
-  echo "  Install it:  npm install -g innerwarden" >&2
+  # NOT `npm install -g`. That writes to npm's global prefix, which is root-owned
+  # on any distro-packaged Node, so on Linux it exits EACCES before InnerWarden is
+  # reached. Handing someone a command that fails is worse than saying nothing.
+  echo "  Install it:  curl -fsSL https://innerwarden.com/free | sh" >&2
+  echo "               (Windows: irm https://innerwarden.com/free.ps1 | iex)" >&2
+  echo "  If it installs but is still not found, add ~/.local/bin to your PATH." >&2
   echo "  Then re-run this script." >&2
   exit 2
 fi
@@ -53,7 +58,9 @@ case "$ver" in
     echo "  It said: ${ver:-<nothing>}" >&2
     echo "  A leftover npm shim pointing at a removed binary looks exactly like" >&2
     echo "  this, and its message blames your platform rather than the missing file." >&2
-    echo "  Reinstall cleanly:  npm uninstall -g innerwarden && npm install -g innerwarden" >&2
+    echo "  Reinstall cleanly:" >&2
+    echo "    npm uninstall -g innerwarden       # drop the dead shim, if npm put it there" >&2
+    echo "    curl -fsSL https://innerwarden.com/free | sh" >&2
     exit 2
     ;;
 esac
