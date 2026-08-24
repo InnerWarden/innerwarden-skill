@@ -1,16 +1,48 @@
+<div align="center">
+
 # InnerWarden, installed by your AI agent
+
+**Your agent has a shell. This puts a verdict in front of every command it runs.**
+
+[![install](https://img.shields.io/badge/install-npm%20i%20--g%20innerwarden-0b7285?style=flat-square)](https://www.npmjs.com/package/innerwarden)
+[![platforms](https://img.shields.io/badge/Linux%20%C2%B7%20macOS%20%C2%B7%20Windows-supported-334155?style=flat-square)](docs/platforms.md)
+[![licence](https://img.shields.io/badge/this%20repo-Apache--2.0-334155?style=flat-square)](LICENSE)
+
+</div>
 
 Point your coding agent at this repository and tell it:
 
-> install InnerWarden and verify it is actually screening my commands
+> **install InnerWarden and verify it is actually screening my commands**
 
-It will install the guardrail, wire your agent to it, add the Enterprise host
-layer if you have a licence, and then **prove** the result rather than assuming
-it. Works with Claude Code, Cursor, Codex, or any agent that can read a
-repository and run a shell.
+It installs the guardrail, wires your agent to it, adds the Enterprise host layer
+if you have a licence, and then **proves** the result rather than assuming it.
+Claude Code, Cursor, Codex, or anything that reads a repo and runs a shell.
 
-There is nothing to configure here and nothing to build. This repository is
-instructions and one verification script.
+Nothing to configure here and nothing to build. This repository is instructions
+and one verification script.
+
+```
+$ ./scripts/verify-install.sh
+
+  PASS  a destructive command is DENIED (rm -rf / -> deny)
+  PASS  an ordinary command is ALLOWED (ls -la -> allow)
+  PASS  the hook REFUSES a denied command (exit 2, which is what an agent obeys)
+  PASS  1 agent(s) wired to the guard
+
+  Screening confirmed: 9 checks passed.
+```
+
+---
+
+## In 60 seconds
+
+| | |
+|---|---|
+| **What it does** | screens every command and tool call your agent tries, **before it runs**, and answers allow / review / deny with reasons |
+| **Where it decides** | on your machine. No account, no control plane, nothing sent anywhere for a verdict |
+| **How it starts** | monitor mode: records everything, blocks nothing, until you say otherwise |
+| **What it costs to try** | nothing. The guardrail is Apache-2.0 |
+| **How you know it works** | `./scripts/verify-install.sh` sends real commands through it and reads the verdicts |
 
 ---
 
