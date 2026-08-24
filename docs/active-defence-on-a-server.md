@@ -12,8 +12,13 @@ operator's side if you get them wrong, and one of them can lock their terminal.
 
 ## Before you run a single command, ASK
 
-Do not guess any of these and do not start until you have them. Ask for all of
-them in one message so the operator answers once:
+Do not guess any of these. Ask for each one at the moment you need it, in plain
+language, and wait for the answer: operators expect to be walked through this,
+not handed a form. But do not begin at all until you have items 1 and 2, because
+without them there is nothing to install and nowhere to install it.
+
+Never ask for a password, a private key's contents, or an API key. If a step
+needs one, hand the operator the command and let them run it.
 
 1. **The server.** Address or hostname, the SSH user, and the private key path if
    it is not their default. You need to be able to run
@@ -60,16 +65,70 @@ Report back to the operator, in plain words:
 - **Under ~2 GB free** is tight: the installer downloads an on-device model of
   about 87 MB plus the binaries.
 
-## 2. Put the licence on the server
+## 2. Get the licence, and check it before you trust it
+
+Ask the operator for the licence now if you do not already have it. It comes in
+one of three shapes and all three are normal:
+
+- **a file on their machine**, usually `license.key`;
+- **JSON pasted into the chat**, in which case write it to a file yourself;
+- **a download link**, in which case fetch it: `curl -fsSL <url> -o /tmp/license.key`.
+
+A valid licence is JSON with exactly these fields:
+
+```json
+{
+  "customer_id": "...",
+  "host": "*",
+  "features": ["all"],
+  "valid_from": "2026-08-24T16:37:00Z",
+  "valid_until": "2026-11-22T16:37:00Z",
+  "signature": "<128 hex characters>"
+}
+```
+
+Check it BEFORE installing. A bad licence fails deep inside the installer with a
+message that sends people looking in the wrong place:
+
+Write this to a file and run it; do not try to inline it with `python3 -c`,
+because the quoting fights the shell and the f-strings need names rather than
+nested subscripts:
+
+```sh
+cat > /tmp/lic-check.py <<'PY'
+import json, sys, datetime
+d = json.load(open(sys.argv[1]))
+for k in ("customer_id", "host", "features", "valid_until", "signature"):
+    assert k in d, f"missing field: {k}"
+assert len(d["signature"]) == 128, "signature is not 128 hex chars - file may be truncated"
+left = (datetime.datetime.fromisoformat(d["valid_until"].replace("Z", "+00:00"))
+        - datetime.datetime.now(datetime.timezone.utc)).days
+assert left > 0, f"licence EXPIRED {abs(left)} days ago"
+cid, hst = d["customer_id"], d["host"]
+print(f"ok: {cid}, host {hst}, {left} days left")
+PY
+python3 /tmp/lic-check.py /tmp/license.key
+```
+
+Expected: `ok: <customer>, host *, <N> days left`. Anything else, stop and read
+the message to the operator: a truncated signature and an expired licence are
+both things only they can fix, and both fail confusingly later.
+
+`"host": "*"` is a site licence and runs anywhere. **Any other value binds the
+licence to one machine**, matched against that host's `/etc/machine-id`; install
+it on a different box and the installer refuses. If `host` is not `*`, say so to
+the operator now and confirm this is the intended machine.
+
+Then copy it over and confirm it survived the trip:
 
 ```sh
 scp -i <key> <local-licence-path> <user>@<host>:/tmp/license.key
 ssh <user>@<host> 'head -c 40 /tmp/license.key; echo'
 ```
 
-The second line is not decoration. A licence that arrived truncated or as HTML
-(a download that returned a login page) fails later with a confusing message,
-and you want to see JSON now.
+That last line is not decoration. A licence downloaded from behind a login
+arrives as an HTML page, and you want to see `{"customer_id"` now rather than a
+confusing failure in three minutes.
 
 ## 3. Install, WITHOUT a terminal
 
@@ -131,59 +190,94 @@ Read its "Fixing first" section back to the operator. On a fresh install it
 usually reports that `agent.toml` does not declare a dashboard bind, which is
 step 5.
 
-## 5. Fix the dashboard bind before promising a dashboard
+## 5. Read `arm --check`, but do not get stuck on it
 
-A fresh install can be born reporting `agent.toml does not declare [dashboard]
-bind, so innerwarden-ctl assumes a default port and cannot reach the dashboard it
-is talking about`. If you skip this, the next step appears to work and the
-dashboard is unreachable.
+A fresh install reports, under "Fixing first":
 
-```sh
-ssh <user>@<host> 'sudo innerwarden-ctl arm --check | sed -n "/Fixing first/,/^$/p"'
+```
+- repair dashboard-bind: agent.toml does not declare [dashboard] bind, so
+  innerwarden-ctl assumes a default port and cannot reach the dashboard it is
+  talking about
 ```
 
-Apply whatever repair it names. Re-run `arm --check` afterwards and confirm the
-line is gone. Do not tell the operator the dashboard is ready until it is.
+**This is a warning, not a blocker, and on a default install the dashboard works
+anyway.** Verified on a clean Ubuntu 26.04 host: with that line present, the
+dashboard still served correctly on its default port. Mention it to the operator
+as a known cosmetic gap and carry on. Do not go hunting for a repair command and
+do not let it stop you delivering a working dashboard.
 
 ## 6. Bring up the dashboard
 
 ```sh
 ssh <user>@<host> 'sudo innerwarden-ctl dashboard login'
+```
+
+It prints a username and a generated password, **once**:
+
+```
+[ok] dashboard login created. SAVE THIS, it is shown once:
+       username: admin
+       password: <generated>
+```
+
+Give those to the operator directly and tell them it is shown once. Do not paste
+them into a shared or logged channel. It also restarts the watchdog to apply the
+change, which is expected.
+
+```sh
 ssh <user>@<host> 'sudo innerwarden-ctl dashboard'
 ```
 
-`dashboard login` exists because the dashboard is **fail-closed**: without a
-login it answers 401. Capture whatever credential or URL it prints and hand it to
-the operator; do not paste secrets into a shared channel.
+This prints the bind, the exposure and the tunnel. Four things about it that
+will otherwise cost you the demo, all confirmed on a real host:
 
-`dashboard` prints the URL and the exact SSH tunnel command.
+- **It is HTTPS, not HTTP.** `http://` gets you a connection failure that looks
+  like nothing is listening. The certificate is self-signed, so a browser shows
+  a warning the operator must click through, and `curl` needs `-k`.
+- **The paid dashboard is port 8787.** The FREE CLI's dashboard is 8788. They are
+  different servers on the same machine and the installer puts the free CLI there
+  too, so both can be up at once.
+- **`dashboard` exists in both tiers.** `innerwarden dashboard` is the FREE one;
+  the paid one is `innerwarden-ctl dashboard` (or `innerwarden host dashboard`).
+  Name the right binary or the operator opens the wrong dashboard and reports the
+  paid features missing.
+- **The tunnel line it prints contains `root@YOUR_SERVER`.** That is a
+  placeholder AND the wrong user for most hosts. Never pass it through verbatim;
+  substitute the real user, host and key yourself.
 
-**`dashboard` exists in both tiers.** On a host that also has the free CLI,
-`innerwarden dashboard` is the FREE one on 127.0.0.1:8788. The paid one is
-`innerwarden-ctl dashboard` (or `innerwarden host dashboard`). Name the right
-binary when you tell the operator what to run, or they will open the wrong
-dashboard and report that the paid features are missing.
+Prove it serves before you say it is ready:
+
+```sh
+ssh <user>@<host> 'curl -sk -o /dev/null -w "%{http_code}\n" https://127.0.0.1:8787/'
+ssh <user>@<host> 'curl -sk -o /dev/null -w "%{http_code}\n" -u admin:<password> https://127.0.0.1:8787/'
+```
+
+Expect **401** then **200**. The 401 is the point: the dashboard is fail-closed
+and refuses anyone without the login. If the first returns 200, stop and tell the
+operator, because the login did not take.
 
 ## 7. Give the operator the tunnel, and say where to run it
 
-The dashboard binds loopback only and is never exposed. The operator reaches it
-through an SSH tunnel **from their own machine**:
+The dashboard binds loopback only. The operator reaches it through an SSH tunnel
+**from their own machine**, with the real user and key filled in:
 
 ```sh
-ssh -N -L <port>:127.0.0.1:<port> -i <key> <user>@<host>
+ssh -N -L 8787:127.0.0.1:8787 -i <key> <user>@<host>
 ```
 
-Then they open `http://127.0.0.1:<port>` in their browser.
+Then they open **`https://127.0.0.1:8787`** and accept the self-signed
+certificate warning, and log in with the username and password from step 6.
 
 Say explicitly: **run this on your laptop, in a new terminal, not on the
 server.** Operators paste it into the server's own shell and get
-`Permission denied (publickey)`, because the server is trying to SSH to itself
-with a key it does not have. The terminal stays blank with no prompt while the
-tunnel is up; that is what success looks like.
+`Permission denied (publickey)`, because the server is then trying to SSH to
+itself with a key it does not have. This happens often enough to be worth
+saying before they do it. The terminal stays blank with no prompt while the
+tunnel is up; that is what success looks like, not a hang.
 
-Never suggest opening the port on a firewall or cloud security group instead.
-The dashboard publishes decisions, detected agents and modes **with no
-authentication of its own beyond that login**, and the tunnel costs one command.
+`innerwarden-ctl dashboard open` exposes it on the network behind the password
+and a firewall rule. Do not reach for it during an evaluation: the tunnel costs
+one command and exposes nothing.
 
 ## 8. Do not arm the kernel controls during an evaluation
 

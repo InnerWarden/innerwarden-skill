@@ -10,16 +10,29 @@
 
 </div>
 
-Point your coding agent at this repository and tell it:
-
-> **install InnerWarden and verify it is actually screening my commands**
-
-It installs the guardrail, wires your agent to it, adds the Enterprise host layer
-if you have a licence, and then **proves** the result rather than assuming it.
-Claude Code, Cursor, Codex, or anything that reads a repo and runs a shell.
+Point your coding agent at this repository and tell it what you want. It reads
+the machine, asks you for what only you can supply, installs, and then **proves**
+the result rather than assuming it. Claude Code, Cursor, Codex, or anything that
+reads a repo and runs a shell.
 
 Nothing to configure here and nothing to build. This repository is instructions
 and one verification script.
+
+## Agents: start here
+
+Two different jobs live in this repository. Pick by what the user asked for,
+before reading anything else.
+
+| The user wants… | Read, in this order |
+|---|---|
+| **the Enterprise / Active Defence host layer on a server** (they mention a licence, a server, SSH, or the dashboard) | [`docs/active-defence-on-a-server.md`](docs/active-defence-on-a-server.md) **first**, then [`SKILL.md`](SKILL.md) for the agent half |
+| **their AI agent screened** (Claude Code, Cursor, Codex on this machine) | [`SKILL.md`](SKILL.md) |
+| **"install InnerWarden"**, and you cannot tell which | Ask. One question: *is this to protect an AI agent on a machine, or to install the licensed host layer on a server?* Do not guess: the two paths differ from the first command. |
+
+**If the user handed you an `ssh` command, they mean the server path.** Go to
+[`docs/active-defence-on-a-server.md`](docs/active-defence-on-a-server.md) and
+follow it in order. There is one mistake in it that locks the user's terminal so
+hard that Ctrl+C does not work, and the document tells you how not to make it.
 
 ```
 $ ./scripts/verify-install.sh
