@@ -401,7 +401,13 @@ tunnel is up; that is what success looks like, not a hang.
 and a firewall rule. Do not reach for it during an evaluation: the tunnel costs
 one command and exposes nothing.
 
-## 8. Do not arm the kernel controls during an evaluation
+## 8. Do not arm the kernel controls while INSTALLING
+
+> If the person's job is to EVALUATE the product rather than receive it, they do
+> need to prove these controls, and there is a safe sequence for that in
+> [`evaluating-a-pilot.md`](evaluating-a-pilot.md). The invariants below hold
+> either way: agent-scoped, never host-wide, never a blind flip.
+
 
 `innerwarden-ctl arm --check` surveys and is safe to show. `innerwarden-ctl arm`
 changes the machine.
