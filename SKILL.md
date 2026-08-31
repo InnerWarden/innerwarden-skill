@@ -3,6 +3,14 @@ name: innerwarden
 description: Install, wire and verify InnerWarden. Two jobs: screening an AI agent's shell commands and tool calls on a machine, and installing the licensed Active Defence host layer on a Linux server (with its dashboard). Use when the user asks to install InnerWarden, protect an agent, install Enterprise or Active Defence on a server with a licence, reach the dashboard, or check whether the guard is actually screening anything.
 ---
 
+> **Already installed, and now someone has to decide whether it WORKS?** That is
+> a different job from installing, and it has its own page:
+> [`docs/evaluating-a-pilot.md`](docs/evaluating-a-pilot.md). It answers the five
+> questions an evaluator asks, in order: what is switched on, how to switch on
+> the rest, how to test the command screening, how to test the three kernel
+> controls, and what "the rest" is. Every command on that page has been run on a
+> licensed host.
+>
 > **Installing on a SERVER, or Enterprise / Active Defence, or a licence, or the
 > dashboard?** Stop and read
 > [`docs/active-defence-on-a-server.md`](docs/active-defence-on-a-server.md)
