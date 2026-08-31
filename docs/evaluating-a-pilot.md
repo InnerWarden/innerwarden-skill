@@ -56,6 +56,70 @@ machine that received new binaries without running the installer, and the fix is
 to re-run the installer. It is worth checking specifically, because every other
 area can be green while this one is not.
 
+### Three lines in 0.16.52 that describe the config file, not the host
+
+All three were measured on a host where the thing being warned about was
+demonstrably working. Check the host before acting on any of them; each is being
+corrected, and each is a report that reads one surface and makes a claim about
+another.
+
+```
+[warn] Dashboard has no login configured, so it serves nothing
+```
+
+This reads `[dashboard]` in `agent.toml`. On an install where the watchdog
+launches the agent, the bind address and credentials arrive on the command line
+instead, so the file looks empty while the dashboard is serving normally. Settle
+it on the host, not from the warning:
+
+```sh
+ss -lntp | grep -E '8787|:443'          # is anything listening
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8787/   # 401 = serving, with auth
+```
+
+A `401` means it is up and asking for a login, which is the opposite of "serves
+nothing". Note the port: 8787 is the default, but an install can bind elsewhere
+(443 is common when it is published), so check the bind before concluding it is
+down.
+
+```
+[warn] block-ip (enabled): sudoers drop-in missing (/etc/sudoers.d/innerwarden-block-ip)
+[warn] sudo-protection (enabled): sudoers drop-in missing (/etc/sudoers.d/innerwarden-suspend-user)
+```
+
+The drop-in is how an *unprivileged* agent reaches the firewall. When the agent
+runs as root it does not need one, and blocking works with the file absent. The
+warning does not look at who the agent runs as. Verify by looking at the
+firewall itself, which is where the truth is:
+
+```sh
+ps -o user= -p "$(pgrep -f innerwarden-agent | head -1)"
+sudo ufw status | grep innerwarden | tail -5      # rules the responder wrote
+```
+
+Rules tagged `# innerwarden` mean the responder is reaching the firewall. If the
+agent is NOT root and there are no rules, then the warning is real and the
+drop-in is the fix.
+
+```
+NOT turning on, and why:
+  - execution-gate: ... there is no agent to scope to
+```
+
+Read this as a statement about what `arm` would do next, not about what the host
+has on. Up to and including 0.16.52 a control that is **already armed** can be
+listed here, because the section was built from whether this run could arm
+something rather than from whether it is already armed. Always confirm against
+the control itself:
+
+```sh
+sudo innerwarden-ctl exec-gate status              # mode=enforce means it is on
+sudo innerwarden-config-sign secret-guard status   # LSM key 5 = 1 = ENFORCE
+```
+
+If those say enforce, the host is protected whatever `arm --check` put in that
+section. The proofs in section 4 are the ones that settle it either way.
+
 ---
 
 ## 2. Switching on what is not
