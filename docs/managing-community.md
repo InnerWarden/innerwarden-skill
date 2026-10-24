@@ -10,12 +10,13 @@ the order things usually come up in, and who may do each one.
 
 ## Who does what
 
-You are an AI agent, and the guard you are managing screens you. Since 1.6.6
-the CLI refuses, inside Claude Code, Codex or Gemini, connecting or installing
-in monitor, disconnecting, starting a jail, `allow` and `mute`. It does NOT
-refuse `innerwarden dry-run` or `innerwarden uninstall`; only an enforcing
-Claude Code hook blocks those. Treat every lowering command as the person's
-either way. That is the product working, not something to route around.
+You are an AI agent, and the guard you are managing screens you. The CLI
+refuses, inside Claude Code, Codex or Gemini (a script they run included),
+connecting or installing in monitor, disconnecting, starting a jail, `allow`,
+`mute`, and since 1.6.9 `dry-run` / `monitor` and `uninstall`. An enforcing
+Claude Code hook blocks the same. Treat every lowering command as the person's,
+whatever the agent and whatever lets it through. That is the product working,
+not something to route around.
 
 | You may run it | Only the person runs it, in their own terminal |
 |---|---|

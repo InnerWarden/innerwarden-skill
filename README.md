@@ -38,8 +38,8 @@ does not work, and the document tells you how not to make it.
 
 **An agent cannot lower its own guard.** Switching to monitor, disconnecting,
 allowing a command or removing InnerWarden are the person's to type, in their
-own terminal. The CLI refuses most of them inside Claude Code, Codex or Gemini,
-an enforcing Claude Code hook blocks the rest, and the skill hands them over
+own terminal. The CLI refuses them inside Claude Code, Codex or Gemini, an
+enforcing Claude Code hook blocks them too, and the skill hands them over
 instead of working around it.
 
 ```

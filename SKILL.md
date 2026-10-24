@@ -68,12 +68,13 @@ so:
 - `innerwarden install <agent> --monitor`
 - `innerwarden contain` (its `--dry-run` is fine)
 - `innerwarden allow` and `innerwarden mute` (they need a person at a terminal)
+- `innerwarden dry-run` / `monitor` and `innerwarden uninstall` (since 1.6.9;
+  `uninstall --dry-run` and every `--help` stay open)
 
-The CLI does NOT refuse `innerwarden dry-run` or `innerwarden uninstall`. In
-Claude Code, an enforcing hook blocks all of the above with exit 2, plus
-`dry-run`, `uninstall`, turning a kernel control off and stopping InnerWarden's
-services. Agents wired through the MCP proxy have no such hook on their shell.
-Treat every one of these as the person's either way.
+In Claude Code, an enforcing hook blocks all of the above with exit 2, plus
+turning a kernel control off and stopping InnerWarden's services. Agents wired
+through the MCP proxy have no such hook on their shell. Treat every one of
+these as the person's either way.
 
 That is the product working. **Do not look for a way around it**: no unsetting
 environment variables, no wrapper script, no other launcher, no `--operator`
@@ -121,11 +122,11 @@ enforce, you cannot set it from inside an agent. Offer the choice in step 2.
 
 ## The sequence
 
-**Be on current versions.** At the time of writing, Community is 1.6.8 and Pro
+**Be on current versions.** At the time of writing, Community is 1.6.9 and Pro
 is 0.17.2. Check what is actually installed rather than assuming:
 
 ```sh
-innerwarden --version        # 1.6.8 or newer; it also names Pro when present
+innerwarden --version        # 1.6.9 or newer; it also names Pro when present
 innerwarden-ctl --version    # only on a Pro host: 0.17.2 or newer
 ```
 
