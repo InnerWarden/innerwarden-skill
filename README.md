@@ -38,14 +38,15 @@ does not work, and the document tells you how not to make it.
 
 **An agent cannot lower its own guard.** Switching to monitor, disconnecting,
 allowing a command or removing InnerWarden are the person's to type, in their
-own terminal. The CLI refuses them inside Claude Code, Codex or Gemini, an
-enforcing Claude Code hook blocks them too, and the skill hands them over
-instead of working around it.
+own terminal. The CLI refuses them inside Claude Code, Codex, Gemini or (since
+Community 1.6.11) OpenClaw's shell, an enforcing Claude Code hook or OpenClaw
+plugin blocks them too, and the skill hands them over instead of working
+around it.
 
 ```
 $ ./scripts/verify-install.sh --proof iw-proof-ca77e0c4
 
-  PASS  innerwarden 1.6.8
+  PASS  innerwarden 1.6.11
   PASS  a destructive command is DENIED (rm -rf / -> deny)
   PASS  an ordinary command is ALLOWED (ls -la -> allow)
   PASS  the hook REFUSES a denied command (exit 2, which is what an agent obeys)
@@ -82,9 +83,12 @@ be wrong about a path.
 
 InnerWarden screens what the agent tries **before it runs** and returns
 **allow**, **review** or **deny**, with the reasons. Claude Code is covered by a
-pre-execution hook on its Bash and file-tool calls; for Codex, Gemini, Cursor
-and OpenClaw the guard wraps their MCP servers instead, which screens calls to
-those servers and not the agents' own built-in tools.
+pre-execution hook on its Bash and file-tool calls. OpenClaw's own `exec`,
+`process`, `write`, `edit` and `apply_patch` are screened by a plugin on its
+`before_tool_call` hook since Community 1.6.11 (OpenClaw 2026.9.7 or newer),
+and its MCP servers through the proxy. For Codex, Gemini and Cursor the guard
+wraps their MCP servers instead, which screens calls to those servers and not
+the agents' own built-in tools.
 `innerwarden agents list` names the mechanism it used. The verdict is
 computed on your machine: no command is sent anywhere for a judgement, there is
 no account, and no service has to be reachable for the guard to work.
@@ -181,7 +185,7 @@ but nothing reaching it, `2` not installed, `3` installed but judging wrongly.
 | [`docs/managing-community.md`](docs/managing-community.md) | running the free guard day to day |
 | [`docs/managing-pro.md`](docs/managing-pro.md) | running a Pro host day to day: licence, dashboard, responder, kernel controls, upgrade |
 | [`docs/evaluating-a-pilot.md`](docs/evaluating-a-pilot.md) | proving each layer works, for whoever decides |
-| [`docs/openclaw.md`](docs/openclaw.md) | what is and is not screened for OpenClaw |
+| [`docs/openclaw.md`](docs/openclaw.md) | what is screened for OpenClaw (its own tools through a plugin, its MCP servers through the proxy) and the plugin's limits |
 | [`clawhub/innerwarden-security/`](clawhub/innerwarden-security/SKILL.md) | the same skill, shaped for OpenClaw and published on ClawHub |
 
 ---

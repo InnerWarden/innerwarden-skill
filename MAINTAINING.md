@@ -15,7 +15,8 @@ So it moves with every user-visible change, in the same round as the release:
 3. `sh scripts/tests/install-lead-works-without-root.sh`, and
    `scripts/verify-install.sh` with the new binary in a throwaway home: no
    agent exits 1; a wired agent gives "Wiring confirmed"; `--proof` with a
-   token sent through `innerwarden hook` exits 0.
+   token sent through `innerwarden hook` (or, for OpenClaw, through
+   `innerwarden openclaw screen`, the path its plugin uses) exits 0.
 4. Pull request, review, merge.
 5. Republish the ClawHub copy from the merge commit:
 
@@ -31,6 +32,8 @@ So it moves with every user-visible change, in the same round as the release:
 
 What the content must always hold: an agent never lowers its own guard
 (monitor, disconnect, allow, mute, contain, disarm, uninstall are the
-person's); each agent's coverage is stated exactly (for OpenClaw today, calls
-to its MCP servers, not its built-in tools); InnerWarden Pro is never called
-open source; kernel enforcement is Linux only; no em dashes.
+person's); each agent's coverage is stated exactly (for OpenClaw since
+Community 1.6.11, its own `exec`, `process`, `write`, `edit` and `apply_patch`
+through the `innerwarden-guard` plugin on OpenClaw 2026.9.7 or newer, plus
+calls to its MCP servers, with the plugin's limits); InnerWarden Pro is never
+called open source; kernel enforcement is Linux only; no em dashes.

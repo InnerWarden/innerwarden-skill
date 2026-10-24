@@ -21,9 +21,12 @@
 # Why --proof: counting recorded decisions cannot prove traffic. `innerwarden
 # check`, this script's own probes and a previous run all record decisions, so a
 # second run would read its own footprints and call it screening. The proof is a
-# unique token the restarted agent itself runs (Claude Code: `echo TOKEN`; an
-# MCP-wired agent: any call to one of its MCP tools with TOKEN in an argument),
-# found in the decision graph on a channel that is not `check`.
+# unique token the restarted agent itself runs (Claude Code, and OpenClaw since
+# Community 1.6.11 through its own `exec` tool: `echo TOKEN`; an agent wired
+# through the MCP proxy only: any call to one of its MCP tools with TOKEN in an
+# argument), found in the decision graph on a channel that is not `check`.
+# OpenClaw's plugin records its decisions as the Claude Code hook does
+# (channel `hook`, agent `openclaw`), so the same search finds them.
 
 proof=""
 while [ $# -gt 0 ]; do
@@ -182,13 +185,31 @@ fi
 # One line per agent, indented: "  <name>  not guarded, connect via ..." or
 # "  <name>  ✓ guarded (hook, monitor)". The header line ("... found (2 not
 # guarded yet):") is not indented and must not be counted as an agent.
-agent_lines=$(printf '%s\n' "$agents_out" | grep -E '^  [A-Za-z0-9]')
+agent_lines=$(printf '%s\n' "$agents_out" | grep -E '^  [A-Za-z0-9]' | grep -v "^  OpenClaw's own tools:")
 wired=$(printf '%s\n' "$agent_lines" | grep 'guarded (' | grep -vc 'not guarded')
 unwired=$(printf '%s\n' "$agent_lines" | grep -c 'not guarded')
+# Since Community 1.6.11 OpenClaw's own tools are screened by the plugin
+# innerwarden-guard, and `agents list` says so on a line of its own
+# ("OpenClaw's own tools: screened, monitor"). OpenClaw's row above it only
+# knows the MCP side, so with no local MCP servers it reads "not guarded" while
+# the plugin screens every exec, process, write, edit and apply_patch. Count
+# that OpenClaw as wired.
+openclaw_own=$(printf '%s\n' "$agents_out" | sed -n "s/^  OpenClaw's own tools: //p" | head -1)
+case "$openclaw_own" in
+  screened*)
+    if printf '%s\n' "$agent_lines" | grep -E '^  openclaw ' | grep -q 'not guarded'; then
+      wired=$((wired+1))
+      unwired=$((unwired-1))
+      agent_lines=$(printf '%s\n' "$agent_lines" | grep -v -E '^  openclaw ')
+      agent_lines=$(printf '%s\n%s' "$agent_lines" "  openclaw      ✓ guarded (plugin innerwarden-guard, ${openclaw_own#screened, }; no local MCP servers)")
+    fi
+    ;;
+esac
 
 if [ "$wired" -gt 0 ]; then
   ok "$wired agent(s) wired to the guard"
   printf '%s\n' "$agent_lines" | grep 'guarded (' | grep -v 'not guarded' | sed 's/^ */        /'
+  [ -n "$openclaw_own" ] && printf "        OpenClaw's own tools: %s\n" "$openclaw_own"
   [ "$unwired" -gt 0 ] && printf '%s\n' "$agent_lines" | grep 'not guarded' | sed 's/^ */        /'
 elif [ "$unwired" -gt 0 ]; then
   bad "$unwired agent(s) found on this machine and NONE of them are wired" \
@@ -236,9 +257,12 @@ if [ -n "$proof" ]; then
   else
     bad "nothing carrying '$proof' reached the guard from an agent" \
         "Either the agent was not restarted after wiring, or its command took a
-        path the guard does not see (for MCP-wired agents only MCP tool calls
-        are screened, not their own shell). Restart the agent, have it run the
-        token again, and re-run this script with --proof $proof."
+        path the guard does not see (for agents wired through the MCP proxy
+        only, such as Codex, Gemini or Cursor, only MCP tool calls are
+        screened, not their own shell; OpenClaw's own exec is screened by its
+        plugin from Community 1.6.11 on OpenClaw 2026.9.7 or newer, once the
+        gateway restarted). Restart the agent, have it run the token again,
+        and re-run this script with --proof $proof."
   fi
 fi
 
@@ -343,7 +367,9 @@ else
   echo "  proves the RUNNING agent goes through it yet. For that:"
   echo "    1. restart the agent (a session opened before the wiring is not screened);"
   echo "    2. ask it to run:  echo $token"
-  echo "       (an MCP-wired agent: any call to one of its MCP tools with $token in it);"
+  echo "       (OpenClaw: with its own exec tool, which its plugin screens; an agent"
+  echo "       wired through the MCP proxy only: any call to one of its MCP tools"
+  echo "       with $token in it);"
   echo "    3. re-run:  $0 --proof $token"
   echo "  THAT is the proof."
 fi

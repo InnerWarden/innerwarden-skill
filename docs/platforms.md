@@ -65,8 +65,11 @@ it should not.
 - **Several agents, one host.** One installation screens all of them.
   `innerwarden agents connect --all` wires everything it finds (the person's
   call: it also rewires agents already set). What it covers
-  differs by agent (Claude Code: hook; Codex, Gemini, Cursor, OpenClaw: their
-  MCP servers only; Aider: in a jail), and `innerwarden status` says which.
+  differs by agent (Claude Code: hook; OpenClaw: a plugin for its own tools
+  since Community 1.6.11, plus its MCP servers; Codex, Gemini, Cursor: their
+  MCP servers only; Aider: in a jail), and `innerwarden agents list` says which
+  (for OpenClaw, `innerwarden status` in 1.6.11 still says its own tools are
+  not screened; `agents list` is the accurate line).
 
 The screening decision is local either way. Commands are not sent anywhere for a
 verdict, there is no account to create, and there is no service that has to be

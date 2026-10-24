@@ -17,7 +17,8 @@ description: Install, verify and run InnerWarden day to day. InnerWarden Communi
 >   [`docs/managing-community.md`](docs/managing-community.md), and for a Pro
 >   host also [`docs/managing-pro.md`](docs/managing-pro.md).
 > - **The agent is OpenClaw:** read [`docs/openclaw.md`](docs/openclaw.md)
->   too. What is screened there is narrower than for Claude Code.
+>   too. Its own tools are screened by a plugin since Community 1.6.11, on
+>   OpenClaw 2026.9.7 or newer, and `innerwarden status` misreports that.
 > - **Otherwise** (protect the agent on this machine, or the free CLI's own
 >   dashboard, `innerwarden dashboard`): this page.
 
@@ -34,7 +35,7 @@ agent:
 |---|---|
 | Claude Code | a pre-execution hook on its `Bash` calls and on its file tools (`Write`, `Edit`, `MultiEdit`, `NotebookEdit`), plus a post-tool hook that remembers where a value came from |
 | Codex CLI, Gemini CLI, Cursor | their MCP servers are rewired to run through the guard's proxy |
-| OpenClaw | the same MCP proxy, so only calls to its MCP servers are screened; its built-in tools are not ([`docs/openclaw.md`](docs/openclaw.md)) |
+| OpenClaw | since Community 1.6.11, the plugin `innerwarden-guard` on OpenClaw's `before_tool_call` hook screens its own `exec`, `process`, `write`, `edit` and `apply_patch` calls (OpenClaw 2026.9.7 or newer), and the MCP proxy screens calls to its MCP servers ([`docs/openclaw.md`](docs/openclaw.md)) |
 | Aider | no hook and no MCP: the person starts it inside `innerwarden contain` |
 | Goose, Windsurf, Cline | not wirable yet |
 
@@ -60,8 +61,8 @@ what you will see on the release pages. Its tools are `innerwarden-ctl` and
 Read this before any command that changes the guard.
 
 Since Community 1.6.6 an AI agent **cannot lower its own guard**. From inside
-Claude Code, Codex or Gemini the CLI refuses, exits 1, changes nothing and says
-so:
+Claude Code, Codex or Gemini, and since 1.6.11 OpenClaw's exec shell, the CLI
+refuses, exits 1, changes nothing and says so:
 
 - `innerwarden agents connect ... --monitor`
 - `innerwarden agents disconnect`
@@ -72,16 +73,18 @@ so:
   `uninstall --dry-run` and every `--help` stay open)
 
 In Claude Code, an enforcing hook blocks all of the above with exit 2, plus
-turning a kernel control off and stopping InnerWarden's services. Agents wired
-through the MCP proxy have no such hook on their shell. Treat every one of
-these as the person's either way.
+turning a kernel control off and stopping InnerWarden's services. In OpenClaw
+the plugin, in enforce, refuses the same before they run, and also any attempt
+to remove, disable or rewrite the plugin itself. Agents wired only through the
+MCP proxy (Codex, Gemini, Cursor) have no such hook on their shell. Treat
+every one of these as the person's either way.
 
 That is the product working. **Do not look for a way around it**: no unsetting
 environment variables, no wrapper script, no other launcher, no `--operator`
 flag. Hand the exact command to the person, say in one sentence why it is
 theirs, and wait. The rule is the same for an agent the CLI does not recognise
-(OpenClaw, Cursor, Aider and Goose are not detected today): you never lower,
-pause, remove or loosen the guard yourself.
+(Cursor, Aider and Goose are not detected today): you never lower, pause,
+remove or loosen the guard yourself.
 
 What you may run, because it only reads: `innerwarden --version`, `status`,
 `agents list`, `check`, `graph`, `notify --test`, `allow --list`,
@@ -122,11 +125,11 @@ enforce, you cannot set it from inside an agent. Offer the choice in step 2.
 
 ## The sequence
 
-**Be on current versions.** At the time of writing, Community is 1.6.9 and Pro
+**Be on current versions.** At the time of writing, Community is 1.6.11 and Pro
 is 0.17.2. Check what is actually installed rather than assuming:
 
 ```sh
-innerwarden --version        # 1.6.9 or newer; it also names Pro when present
+innerwarden --version        # 1.6.11 or newer; it also names Pro when present
 innerwarden-ctl --version    # only on a Pro host: 0.17.2 or newer
 ```
 
@@ -188,7 +191,10 @@ for them. Then put the choice to the person, in these words or close to them:
   terminal: `innerwarden agents connect <agent> --monitor`. It records what it
   would refuse and refuses nothing.
 - **Enforce from the start.** You may run `innerwarden agents connect <agent>`
-  yourself. Denials are real from the next restart.
+  yourself. Denials are real from the next restart. For OpenClaw, `connect`
+  puts its MCP servers in enforce and installs the plugin for its own tools in
+  monitor; `innerwarden enforce`, which you may also run once the person chose
+  enforce, turns the plugin's refusals on.
 
 If Pro is going on this machine too (step 3), install it **before** wiring
 enforce: an enforcing guard holds the Pro install line when you run it.
@@ -213,7 +219,9 @@ guard, and it is the person's.
 **If `connect` says an agent "does not exist yet" or "has no local MCP servers
 to guard", running it again changes nothing. Stop looping.** That agent becomes
 wirable when the user adds the MCP server they actually run, or when the
-person starts the agent under `innerwarden contain -- <command>`.
+person starts the agent under `innerwarden contain -- <command>`. OpenClaw is
+the exception to read carefully: there that line is about its MCP servers
+only, and the next line says the plugin for its own tools was installed.
 
 For an agent on another machine, in a container you do not build, or in CI,
 the local hook does not apply: read
@@ -289,9 +297,10 @@ through the guard, because commands run by hand are recorded too. So it prints
 a one-off token and the last step:
 
 1. the person restarts the agent;
-2. the restarted agent runs `echo iw-proof-<token>` (an agent wired through the
-   MCP proxy: any call to one of its MCP tools with the token in it, since its
-   own shell is not screened);
+2. the restarted agent runs `echo iw-proof-<token>` (OpenClaw, since 1.6.11,
+   through its own `exec` tool, which the plugin screens; Codex, Gemini or
+   Cursor, wired through the MCP proxy only: any call to one of its MCP tools
+   with the token in it, since their own shell is not screened);
 3. `./scripts/verify-install.sh --proof iw-proof-<token>`.
 
 Only that run can say **"Screening confirmed"**, and it is the one to report.
@@ -318,13 +327,19 @@ innerwarden host --help         # the Pro host layer, same command
 The ones worth showing a new user, in this order:
 
 ```sh
-innerwarden status                       # is it on, and what each agent's guard covers
+innerwarden status                       # is it on, and what each agent's guard covers (OpenClaw: see below)
 innerwarden check "rm -rf /"             # ask for a verdict directly
 innerwarden graph                        # what has been screened, and how it ended
 innerwarden notify --test                # do the alerts arrive
 innerwarden allow "<glob>"               # the PERSON's: stop asking about a trusted command
 innerwarden enforce                      # when the person decides: denials become real, THEN restart
 ```
+
+In 1.6.11 `status` (and the dashboard's line on what judges each agent) still
+says OpenClaw's built-in tools are not screened, even with the plugin
+installed. For OpenClaw, `innerwarden agents list` is the accurate line:
+"OpenClaw's own tools: screened, monitor" (or `enforce`). Do not repeat the
+`status` sentence for OpenClaw.
 
 `innerwarden dashboard` is a **foreground server** on <http://127.0.0.1:8788>,
 not a one-shot command: it does not return. Background it or give it a terminal
@@ -366,7 +381,9 @@ The first line comes first because `innerwarden uninstall` unwires Claude Code
 only. Every other agent was wired by rewriting its MCP config to call the guard
 by absolute path, so removing the binary first leaves those servers pointing at
 a path that no longer exists, and the command that would have fixed it went
-with the binary. `innerwarden uninstall --dry-run` shows what it would remove.
+with the binary. For OpenClaw it also leaves the `innerwarden-guard` plugin in
+place, and in enforce a plugin that cannot reach the binary refuses every one
+of OpenClaw's own tool calls. `innerwarden uninstall --dry-run` shows what it would remove.
 
 For a Pro host, [`docs/managing-pro.md`](docs/managing-pro.md) has the full
 order: kernel controls off first, then `sudo innerwarden-ctl uninstall`.

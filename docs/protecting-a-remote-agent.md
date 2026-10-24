@@ -1,8 +1,9 @@
 # Protecting an agent you cannot install onto
 
 The usual setup puts the guardrail on the same machine as the agent, and a local
-hook (Claude Code) or the MCP proxy (Codex, Gemini, Cursor, OpenClaw) screens
-what goes through it. Sometimes you cannot do that: the agent runs in a
+hook (Claude Code), a plugin (OpenClaw's own tools, since Community 1.6.11) or
+the MCP proxy (Codex, Gemini, Cursor, and OpenClaw's MCP servers) screens what
+goes through it. Sometimes you cannot do that: the agent runs in a
 managed cloud runtime, in a container image you do not build, or in CI.
 
 For those, the guardrail runs somewhere you control and the agent asks it over
