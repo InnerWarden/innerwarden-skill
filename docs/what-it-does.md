@@ -20,7 +20,8 @@ is what people actually do.
 
 A screening step between the agent and execution. What the agent tries gets a
 verdict before it runs, over whichever surface that agent exposes: a
-pre-execution hook for Claude Code, the MCP path for Cursor, Codex and Gemini.
+pre-execution hook for Claude Code, the MCP path for Cursor, Codex, Gemini and
+OpenClaw (for those, calls to their MCP servers, not their built-in tools).
 
 - **allow** with a reason,
 - **review** when it is ambiguous and a human should look,
@@ -30,27 +31,39 @@ The verdict is computed **on your machine**. No command is sent anywhere for a
 judgement, there is no control plane, no account, and no service that has to be
 up for the guard to work.
 
-## Two tiers, one command
+## Three plans
 
-**Community**, free and Apache-2.0, protects the agent: its commands and its tool
-calls. Linux, macOS and Windows. This is a complete product and it is what most
-people run.
+**InnerWarden Community**, free and Apache-2.0, protects the agent: its commands
+and its tool calls. Linux and macOS; Windows experimental. This is a complete
+product and it is what most people run.
 
-**Enterprise**, licensed, protects the host underneath: an eBPF sensor, host
-detectors, cross-layer correlation, autonomous response, and the kernel
-Execution Gate, which pre-authorises what is allowed to execute at all. Linux
-today. macOS and Windows are in development.
+**InnerWarden Pro**, paid and source-available (not open source), protects the
+host underneath: its own sensor, host detectors, cross-layer correlation,
+evidence-backed response, and the kernel Execution Gate, which, once enforcing,
+lets nothing the guarded agent starts execute unless it was authorised in
+advance (the host itself is never gated). Linux only. Its
+software is released under the name InnerWarden Active Defence.
 
-Enterprise adds capability under the **same `innerwarden` command**. Nothing
-learned in the free tier is discarded when a licence is added, and an evaluation
-can start free and grow without redoing anything.
+**Enterprise** is Pro for fleets, scoped with InnerWarden.
+
+Pro adds its own tools (`innerwarden-ctl`) beside the same `innerwarden`
+command, and `innerwarden host` reaches them. Nothing learned in the free tier
+is discarded when a licence is added, and an evaluation can start free and grow
+without redoing anything.
+
+**What it is not.** It is not a replacement for endpoint detection and response,
+backups or patching, and it is not a compliance certificate. It reduces risk; it
+does not promise that every attack is caught.
 
 ## The design decisions worth knowing
 
-**Observe before enforce.** Every enforcing control starts in a mode that records
-and blocks nothing. You get to see a week of real decisions on your own traffic
-before anything is refused. A guard that blocks something legitimate on its first
-day gets uninstalled on its second, and the product is built around that fact.
+**Observe before enforce is the recommended start.** Monitor records and blocks
+nothing, and the person turns it on from their own terminal; wiring an agent
+without `--monitor` enforces at once. Pro's host layer installs observing, and
+its kernel controls are armed later, on purpose. A week of real decisions on
+your own traffic before anything is refused is what keeps a guard installed: one
+that blocks something legitimate on its first day gets uninstalled on its
+second, and the product is built around that fact.
 
 **It says when it cannot tell.** An allow verdict reads *"no rule matched
 (absence of a match is not a safety judgement)"*, because those are different
@@ -64,7 +77,10 @@ is broken when it is fine destroys the tool's usefulness faster than having no
 check at all.
 
 **Your data stays yours.** Decisions, the audit trail and the local dashboard are
-all on your machine. There is no telemetry about your commands.
+all on your machine. There is no telemetry about your commands. InnerWarden
+Pro's installer sends an install ping, and a Pro host sends an anonymous daily
+heartbeat and a daily licence check; what each carries, and how to switch the
+first two off, is at <https://innerwarden.com/privacy>.
 
 ## Judge it on your own traffic, not on ours
 
@@ -93,12 +109,17 @@ If it disagrees with you, `innerwarden allow "<glob>"` teaches it. If it agrees,
 
 ## Getting a licence
 
-The Enterprise tier is licensed per host and the licence is a file you are
-issued. It is what selects the paid tier at install time:
+InnerWarden Pro is priced per protected agent and bought at
+<https://innerwarden.com/pricing>. The licence arrives as a file attached to the
+purchase email (`license.txt`, also downloadable from
+<https://innerwarden.com/account>), renews itself on the host while the
+subscription runs, and is what selects the paid tier at install time:
 
 ```sh
-curl -fsSL https://innerwarden.com/install | sudo bash -s -- --license=/path/to/license.key
+curl -fsSL https://innerwarden.com/install | sudo bash -s -- --license=/path/to/license.txt
 ```
 
-Pricing is not published. See <https://innerwarden.com/pricing> to start that
-conversation.
+If it lapses, the host keeps running in free mode: within about a minute the
+paid controls turn off and a High "Licence: Free Mode" alert says so; a valid
+licence brings them back without a restart. Enterprise is scoped on request
+from the same page.
