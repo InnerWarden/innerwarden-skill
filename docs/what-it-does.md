@@ -20,8 +20,11 @@ is what people actually do.
 
 A screening step between the agent and execution. What the agent tries gets a
 verdict before it runs, over whichever surface that agent exposes: a
-pre-execution hook for Claude Code, the MCP path for Cursor, Codex, Gemini and
-OpenClaw (for those, calls to their MCP servers, not their built-in tools).
+pre-execution hook for Claude Code; for OpenClaw (Community 1.6.11 or newer,
+OpenClaw 2026.9.7 or newer) a plugin on its `before_tool_call` hook for its own
+`exec`, `process`, `write`, `edit` and `apply_patch`, plus its MCP servers; the
+MCP path for Cursor, Codex and Gemini (for those, calls to their MCP servers,
+not their built-in tools).
 
 - **allow** with a reason,
 - **review** when it is ambiguous and a human should look,

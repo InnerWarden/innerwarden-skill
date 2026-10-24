@@ -11,10 +11,11 @@ the order things usually come up in, and who may do each one.
 ## Who does what
 
 You are an AI agent, and the guard you are managing screens you. The CLI
-refuses, inside Claude Code, Codex or Gemini (a script they run included),
-connecting or installing in monitor, disconnecting, starting a jail, `allow`,
-`mute`, and since 1.6.9 `dry-run` / `monitor` and `uninstall`. An enforcing
-Claude Code hook blocks the same. Treat every lowering command as the person's,
+refuses, inside Claude Code, Codex or Gemini, and since 1.6.11 OpenClaw's exec
+shell (a script they run included), connecting or installing in monitor,
+disconnecting, starting a jail, `allow`, `mute`, and since 1.6.9 `dry-run` /
+`monitor` and `uninstall`. An enforcing Claude Code hook blocks the same, and
+so does OpenClaw's `innerwarden-guard` plugin in enforce. Treat every lowering command as the person's,
 whatever the agent and whatever lets it through. That is the product working,
 not something to route around.
 
@@ -37,12 +38,16 @@ command, from your own terminal".
 
 ```sh
 innerwarden status        # per agent: what is judged before it runs, and what is not
-innerwarden agents list   # per agent: guarded or not, and the mechanism (hook, MCP proxy)
+innerwarden agents list   # per agent: guarded or not, and the mechanism (hook, MCP proxy, OpenClaw's plugin)
 ```
 
-`status` speaks plainly about coverage. For OpenClaw, for example, it says only
-calls to its MCP servers are judged and its built-in tools are not. Repeat what
-it says; do not improve on it.
+`status` speaks plainly about coverage, with one known exception in 1.6.11:
+for OpenClaw it still says "Its built-in tools are not screened by this
+edition", even when the `innerwarden-guard` plugin is installed and screening
+them. For OpenClaw, read the line `agents list` prints, "OpenClaw's own tools:
+screened, monitor" (or `enforce`), which is the accurate one, and do not repeat
+the `status` sentence. For every other agent, repeat what `status` says; do not
+improve on it.
 
 `agents list` reads the configuration on disk. It shows a new mode at once and
 is NOT evidence that a running session picked it up: only a restart does that.
