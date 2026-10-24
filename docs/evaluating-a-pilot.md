@@ -5,8 +5,14 @@ to **decide whether it works**. Installing is the other document. This one
 answers the five questions an evaluator actually asks, in the order they ask
 them.
 
-> Read [`active-defence-on-a-server.md`](active-defence-on-a-server.md) if you
-> are still installing. Everything here assumes the install is done.
+> Read [`pro-on-a-server.md`](pro-on-a-server.md) if you are still installing.
+> Everything here assumes the install is done. Day-to-day running, after the
+> evaluation, is in [`managing-community.md`](managing-community.md) and
+> [`managing-pro.md`](managing-pro.md).
+>
+> Everything an evaluation turns on or off that LOWERS a control (back to
+> monitor, disarm, off) is the person's to run, not yours: see "You are inside
+> the thing being guarded" in [`../SKILL.md`](../SKILL.md).
 
 The five questions:
 
@@ -24,9 +30,9 @@ Three commands, in this order. They answer different questions and the order
 matters.
 
 ```sh
-innerwarden-ctl get status      # what is running
-innerwarden-ctl arm --check     # what this machine CAN enforce, and what is off and why
-innerwarden-ctl doctor          # per-area validation, with the reason for each failure
+sudo innerwarden-ctl get status      # what is running
+sudo innerwarden-ctl arm --check     # what this machine CAN enforce, and what is off and why
+sudo innerwarden-ctl doctor          # per-area validation, with the reason for each failure
 ```
 
 **`get status` is the one to judge by**, and there is a trap worth knowing
@@ -67,7 +73,7 @@ one dominant answer on a fresh pilot:
 NOT turning on, and why:
   - execution-gate: these guards scope to the AI agent's cgroup and there is no
     agent to scope to; arming host-wide is never done, it bricked a host once
-    what to do: start the agent you want guarded, then re-run
+    what to do: start the agent, then re-run
 ```
 
 That is the design, not a limitation. The kernel controls scope to **one AI
@@ -75,13 +81,18 @@ agent's cgroup**, so they need an agent to point at. Start the agent you intend
 to guard, then:
 
 ```sh
-innerwarden-ctl arm --check     # it should now list the controls as available
-innerwarden-ctl arm             # arms what can be armed, safely
+sudo innerwarden-ctl arm --check     # it should now list the controls as available
+sudo innerwarden-ctl arm             # changes the machine; ask the person first
 ```
 
-**What `arm` will and will not do.** It arms the DNS guard in observe and the
-responder in enforce. It will not put a kernel gate straight into enforce, ever.
-Reaching enforcement is a separate, deliberate sequence, and section 4 walks it.
+**What `arm` will and will not do.** It puts the Execution Gate, the Secret
+Read Guard and the DNS Guard in observe, turns the userns guard straight to
+deny for the agent's cgroup (after rehearsing what it has recently observed),
+and turns the responder on in whatever mode
+`sudo innerwarden-ctl config responder --mode observe|dry-run|live` set (it
+says "ON in DRY RUN" when that is the case). It never enforces the Execution
+Gate, the Secret Read Guard or the DNS Guard. Reaching enforcement there is a
+separate, deliberate sequence, and section 4 walks it.
 
 Two things to fix before you start, because they cost an hour each:
 
@@ -168,11 +179,12 @@ you have measured the command.
 
 Two conditions, or you will get a confusing result:
 
-- The mechanism is a **PostToolUse** hook, so the agent must have been wired by
-  this version. `innerwarden agents list` names the mechanism used for each
-  agent; `innerwarden install claude-code` or `innerwarden agents connect`
-  rewires. **Restart the agent afterwards**: a hook is read at agent startup,
-  and a session that was already open keeps running unscreened.
+- The mechanism is a **PostToolUse** hook (Claude Code), so the agent must
+  have been wired by a recent version. `innerwarden agents list` names the
+  mechanism used for each agent; `innerwarden install claude-code` or
+  `innerwarden agents connect --all` rewires in enforce (the `--monitor` forms
+  are the person's). **Restart the agent afterwards**: a hook is read at agent
+  startup, and a session that was already open keeps running unscreened.
 - Choose a step 2 that is **innocent on its own**. If you use `curl | bash` or
   `cat ~/.ssh/id_rsa`, the guard refuses it on its own merits and you have
   learned nothing about taint.
@@ -180,7 +192,8 @@ Two conditions, or you will get a confusing result:
 ### MCP tool calls
 
 For agents with no hook (Cursor, Codex, Gemini, OpenClaw), the guard wraps the
-MCP server instead:
+MCP server instead. That screens the calls to those servers, not the agent's
+own built-in tools; for OpenClaw see [`openclaw.md`](openclaw.md):
 
 ```sh
 innerwarden proxy --mode guard -- npx -y <the mcp server>
@@ -193,20 +206,28 @@ blocking. stdout stays pure MCP; alerts go to stderr.
 
 ## 4. Testing the host protection
 
-This is the paid half: three controls that live in the kernel. Each one denies,
-and each one can be proven to deny rather than assumed.
+This is the paid half: three controls. The Execution Gate and the Secret Read
+Guard live in the kernel; the DNS Guard is a resolver on `127.0.0.1:53` that
+the agent's lookups are routed to. Each one denies, and each one can be proven
+to deny rather than assumed.
 
-**Two invariants that are not negotiable**, and the product enforces both:
+**Two invariants that are not negotiable.** The product enforces the first; the
+second is enforced for the Execution Gate and is your discipline for the rest:
 
 - **Never host-wide.** Every kernel control scopes to the AI agent's cgroup. A
   host-wide execution gate bricked a machine at boot once, and `arm` refuses
   that shape rather than offering it.
 - **Never a blind flip.** Enforcement requires a clean rehearsal first.
 
-And the safety valve, which never needs a licence and is always available:
+And the safety valves, for the person to run; none needs a licence and all are
+always available:
 
 ```sh
-sudo innerwarden-config-sign exec-gate disarm --apply
+sudo innerwarden-ctl exec-gate disarm
+sudo innerwarden-ctl agent kernel disarm
+sudo innerwarden-config-sign secret-guard disarm --apply
+sudo innerwarden-config-sign userns-guard disarm --apply
+sudo innerwarden-config-sign dns-guard disarm
 ```
 
 ### 4a. Execution Gate: nothing runs without prior authorisation
@@ -217,17 +238,18 @@ The full sequence, in order:
 PID=$(pgrep -f '<your agent process>' | head -1)
 
 # 1. Arm in OBSERVE, scoped to that agent, listing what it legitimately runs.
-#    `arm` ADDS to the allowlist; it does not replace it.
-innerwarden-ctl exec-gate arm --pid "$PID" --observe \
+#    `arm` ADDS to the allowlist; it does not replace it, and it never enforces.
+sudo innerwarden-ctl exec-gate arm --pid "$PID" --observe \
     --path /usr/bin/python3 --path /usr/bin/bash --path /usr/bin/curl
 
 # 2. See what WOULD be denied, and allowlist anything legitimate it names.
-innerwarden-ctl exec-gate rehearse --pid "$PID"
+sudo innerwarden-ctl exec-gate rehearse --pid "$PID"
 
-# 3. Flip to enforce. It refuses unless the window is clean.
-innerwarden-ctl exec-gate enforce --pid "$PID" --window 60
+# 3. Flip to enforce. It refuses unless the window is clean, and refuses an
+#    agent that has run nothing in it unless you add --accept-idle-agent.
+sudo innerwarden-ctl exec-gate enforce --pid "$PID" --window 60
 
-innerwarden-ctl exec-gate status
+sudo innerwarden-ctl exec-gate status
 ```
 
 **The proof.** Join the guarded cgroup and try to run something that is not on
@@ -283,7 +305,7 @@ Declare the paths that matter in your environment, not just the obvious ones.
 The list is by path, so it is worth reading with an attacker's eyes before you
 test it.
 
-### 4c. DNS Guard: names that never resolve
+### 4c. DNS Guard: names on its list never resolve
 
 ```sh
 printf 'evil-c2.example\n' | sudo tee -a /var/lib/innerwarden/dns-deny.txt
@@ -291,15 +313,31 @@ sudo innerwarden-config-sign dns-guard rehearse --window 60   # flags essentials
 sudo innerwarden-config-sign dns-guard status
 ```
 
-Point the agent's resolver at the guard, then:
+The guard listens on `127.0.0.1:53`. Put it in enforce (licence needed), point
+the agent's resolver at it (`sudo innerwarden-config-sign dns-guard scope-agent
+--pid "$PID" --apply`; without `--apply` it only prints), then:
 
 ```sh
-dig +short @127.0.0.2 evil-c2.example   # no answer
-dig +short @127.0.0.2 example.com       # resolves normally
+sudo innerwarden-config-sign dns-guard arm   # enforce; going back (arm --observe) is the person's
+dig +short @127.0.0.1 evil-c2.example        # no answer
+dig +short @127.0.0.1 example.com            # resolves normally
 ```
+
+Unknown domains still resolve: the DNS Guard refuses what is on its denylist or
+rated high-confidence malicious, and nothing else.
 
 **Test the legitimate half too.** In DNS a false positive costs more than a false
 negative, and that half is what decides whether this can run in production.
+
+---
+
+### 4d. Per-agent controls for a jailed Claude Code
+
+Pro 0.17 added a second way in, for Claude Code started in the free CLI's jail
+(`innerwarden contain --identity -- claude`, which the person runs): Programs,
+Private files and DNS per agent, behind one switch. The sequence (`watch`,
+`review`, `on`, and `agent kernel check` to prove each part refuses) is in
+[`managing-pro.md`](managing-pro.md). It covers `claude-code` only today.
 
 ---
 
@@ -308,10 +346,11 @@ negative, and that half is what decides whether this can run in production.
 Everything above is a control you can point at and provoke. "The rest" is the
 part that watches, and it is worth being precise about what it proves.
 
-**The sensor and its detectors.** An eBPF sensor feeds detectors for SSH
-brute force, reverse shells, rootkits, ransomware shapes, web scanning and more.
-It is deterministic: no AI, no network. You will see it produce incidents about
-ordinary administration too, including yours, which is the sensor working.
+**The sensor and its detectors.** An eBPF sensor feeds the host's detectors
+(SSH brute force and web scanning among them; `innerwarden-ctl get sensors` and
+the dashboard list what this version runs). You will see it produce incidents
+about ordinary administration too, including yours, which is the sensor
+working.
 
 **Correlation and cases.** The agent groups related events into a case with a
 narrative, a severity and recommended checks. This is where an evaluation should
@@ -322,14 +361,13 @@ happened, what was done about it, and what is left for you.
 **Response actions.** Blocking an IP is the one to test, with the two
 preparations from section 2 done first: your own address allowlisted, and an
 out-of-band route open (cloud console or serial). Confirm the rule in the
-firewall itself, not only the product's own record. The TTL escalates with
-repetition (1h, 4h, 24h, 7 days), so test deliberately rather than in a loop.
+firewall itself, not only the product's own record. Test it deliberately, once,
+rather than in a loop.
 
-**The dashboard.** Two registers on one screen. By default it answers "is it
-working" and "do I have to do anything". A **Show technical detail** switch in
-the header turns on provenance: where each conclusion came from, including what
-could not be confirmed. For an audit, turn it on. Nothing bad is hidden in
-either register; what changes is how much of the reasoning is shown.
+**The dashboard.** By default it answers "is it working" and "do I have to do
+anything". For an audit, look for where each conclusion came from, including
+what could not be confirmed: the product shows its provenance rather than only
+its verdict.
 
 **Honesty about what it does not prove.** `innerwarden observe` records
 dangerous asks that reach an agent in conversation, and it says in its own help

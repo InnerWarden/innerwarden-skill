@@ -1,7 +1,8 @@
 # Protecting an agent you cannot install onto
 
 The usual setup puts the guardrail on the same machine as the agent, and a local
-hook screens every command. Sometimes you cannot do that: the agent runs in a
+hook (Claude Code) or the MCP proxy (Codex, Gemini, Cursor, OpenClaw) screens
+what goes through it. Sometimes you cannot do that: the agent runs in a
 managed cloud runtime, in a container image you do not build, or in CI.
 
 For those, the guardrail runs somewhere you control and the agent asks it over
@@ -14,7 +15,11 @@ innerwarden serve --bind 127.0.0.1:9911
 ```
 
 It serves one route, `POST /api/agent/check-command`, over plain HTTP bound to
-loopback by default.
+loopback. Without `--bind` it takes `127.0.0.1:8787`, which on an InnerWarden Pro
+host is already the Pro agent's HTTPS API: pick another port there, as above.
+(On a Pro host you may not need `serve` at all: the agent's own
+`https://127.0.0.1:8787/api/agent/check-command` answers the same question,
+see [`managing-pro.md`](managing-pro.md).)
 
 ## Ask it for a verdict
 
@@ -34,10 +39,14 @@ curl -s -X POST http://127.0.0.1:9911/api/agent/check-command \
   "asi_ids": ["ASI02", "ASI10"],
   "signals": [
     {"signal": "destructive_command", "score": 50,
-     "detail": "recursive removal of a root / system directory"}
+     "detail": "recursive removal of a root / system directory"},
+    {"signal": "dangerous_command", "score": 40, "detail": "..."}
   ]
 }
 ```
+
+(Abridged: the exact signals and wording change between versions. Act on
+`recommendation`, not on the text.)
 
 An ordinary command comes back like this, and the wording is deliberate:
 
@@ -47,7 +56,8 @@ An ordinary command comes back like this, and the wording is deliberate:
   "recommendation": "allow",
   "risk_score": 0,
   "severity": "none",
-  "explanation": "no rule matched (absence of a match is not a safety judgement)"
+  "explanation": "no rule matched (absence of a match is not a safety judgement)",
+  "signals": []
 }
 ```
 
@@ -71,8 +81,9 @@ def screen(command: str) -> tuple[bool, str]:
         v = requests.post(GUARD, json={"command": command}, timeout=3).json()
     except requests.RequestException as e:
         return False, f"guard unreachable ({e}); refusing rather than guessing"
-    if v["recommendation"] == "deny":
-        return False, v["explanation"]
+    if v.get("recommendation") != "allow":
+        # deny, and review too: review means a human decides first.
+        return False, v.get("explanation", "no verdict")
     return True, v["explanation"]
 ```
 
@@ -94,7 +105,7 @@ it, there is no upstream service, and no account is involved.
 
 ## The trade compared with a local install
 
-A local hook screens **everything** the agent tries, because it sits in the
+A local hook (Claude Code) screens **everything** the agent tries, because it sits in the
 execution path. HTTP screening only covers commands your integration remembers
 to send.
 
