@@ -304,7 +304,7 @@ sudo innerwarden-ctl upgrade --repair-host     # only the host repairs an upgrad
 
 Re-running the installer also upgrades. Neither upgrades an existing free CLI:
 the person runs `innerwarden upgrade` as their own user. Keep the free CLI at
-1.6.3 or newer with Pro 0.17.2.
+1.6.3 or newer with Pro 0.17.9.
 
 ## Removing it
 
