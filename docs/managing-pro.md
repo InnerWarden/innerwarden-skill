@@ -300,11 +300,12 @@ sudo innerwarden-ctl upgrade --check
 sudo innerwarden-ctl upgrade
 sudo innerwarden-ctl upgrade --from <dir>      # a host with no internet: the release files copied over
 sudo innerwarden-ctl upgrade --repair-host     # only the host repairs an upgrade makes, no download
+sudo innerwarden-ctl upgrade --version <TAG>   # move onto a specific release tag instead of latest, same sha256 and signature checks; a tag not newer is reported, not installed
 ```
 
 Re-running the installer also upgrades. Neither upgrades an existing free CLI:
 the person runs `innerwarden upgrade` as their own user. Keep the free CLI at
-1.6.3 or newer with Pro 0.17.9.
+1.6.3 or newer with Pro 0.17.10.
 
 ## Removing it
 
