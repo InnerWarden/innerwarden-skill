@@ -126,11 +126,11 @@ enforce, you cannot set it from inside an agent. Offer the choice in step 2.
 ## The sequence
 
 **Be on current versions.** At the time of writing, Community is 1.6.11 and Pro
-is 0.17.14. Check what is actually installed rather than assuming:
+is 0.17.15. Check what is actually installed rather than assuming:
 
 ```sh
 innerwarden --version        # 1.6.11 or newer; it also names Pro when present
-innerwarden-ctl --version    # only on a Pro host: 0.17.14 or newer
+innerwarden-ctl --version    # only on a Pro host: 0.17.15 or newer
 ```
 
 An older free CLI upgrades itself with `innerwarden upgrade` (installer copy) or
