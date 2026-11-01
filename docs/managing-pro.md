@@ -305,7 +305,7 @@ sudo innerwarden-ctl upgrade --version <TAG>   # move onto a specific release ta
 
 Re-running the installer also upgrades. Neither upgrades an existing free CLI:
 the person runs `innerwarden upgrade` as their own user. Keep the free CLI at
-1.6.3 or newer with Pro 0.17.14.
+1.6.3 or newer with Pro 0.17.15.
 
 ## Removing it
 
