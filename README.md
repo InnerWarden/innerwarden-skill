@@ -36,17 +36,20 @@ Pick by what the user asked for, before reading anything else.
 There is one mistake in it that locks the user's terminal so hard that Ctrl+C
 does not work, and the document tells you how not to make it.
 
-**An agent cannot lower its own guard.** Switching to monitor, disconnecting,
+**An agent does not lower its own guard.** Switching to monitor, disconnecting,
 allowing a command or removing InnerWarden are the person's to type, in their
 own terminal. The CLI refuses them inside Claude Code, Codex, Gemini or (since
 Community 1.6.11) OpenClaw's shell, an enforcing Claude Code hook or OpenClaw
 plugin blocks them too, and the skill hands them over instead of working
-around it.
+around it. Since Community 1.6.12 an enforcing hook also refuses a shell write
+to the files that carry the guard and a line that names the guard and that it
+cannot read. It is a guard that reads text, and its
+[limits are written down](https://github.com/InnerWarden/inner-warden/blob/main/docs/features.md#the-guard-and-its-own-switches).
 
 ```
 $ ./scripts/verify-install.sh --proof iw-proof-ca77e0c4
 
-  PASS  innerwarden 1.6.11
+  PASS  innerwarden 1.6.12
   PASS  a destructive command is DENIED (rm -rf / -> deny)
   PASS  an ordinary command is ALLOWED (ls -la -> allow)
   PASS  the hook REFUSES a denied command (exit 2, which is what an agent obeys)

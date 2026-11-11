@@ -68,8 +68,8 @@ it should not.
   differs by agent (Claude Code: hook; OpenClaw: a plugin for its own tools
   since Community 1.6.11, plus its MCP servers; Codex, Gemini, Cursor: their
   MCP servers only; Aider: in a jail), and `innerwarden agents list` says which
-  (for OpenClaw, `innerwarden status` in 1.6.11 still says its own tools are
-  not screened; `agents list` is the accurate line).
+  (for OpenClaw, `innerwarden status` in 1.6.11 and 1.6.12 still says its own
+  tools are not screened; `agents list` is the accurate line).
 
 The screening decision is local either way. Commands are not sent anywhere for a
 verdict, there is no account to create, and there is no service that has to be

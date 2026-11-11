@@ -28,7 +28,7 @@ protect an AI agent on a machine, or to install InnerWarden Pro on a server?*
 
 ## The rule that is new since the last time you read this
 
-**You cannot lower the guard that screens you, and you must not try.** The CLI
+**You do not lower the guard that screens you, and you never try.** The CLI
 refuses, from inside Claude Code, Codex or Gemini, and since 1.6.11 OpenClaw's
 exec shell, the commands that loosen it:
 `allow` and `mute` since 1.5.4, `agents connect --monitor`, `agents disconnect`
@@ -37,6 +37,14 @@ and `uninstall` since 1.6.9. In Claude Code an enforcing hook blocks them too,
 and in OpenClaw so does the `innerwarden-guard` plugin in enforce. Hand those
 commands to the person, say why, and wait. Never route around a refusal, and
 follow the same rule in an agent the CLI does not recognise.
+
+Since 1.6.12 an enforcing hook reads such a command the way the shell runs it,
+refuses a shell write to what carries the guard (the agent settings that load
+its hook, the guard's configuration, the `innerwarden` program), and refuses a
+line that names the guard and that it cannot read. Write that line plainly;
+never reshape it to get it past. The guard reads text and has written limits
+(`SKILL.md`, "You are inside the thing being guarded"): do not tell the person
+it cannot be lowered at all.
 
 ## The one mistake that ends the session
 

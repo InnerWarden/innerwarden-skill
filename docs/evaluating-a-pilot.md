@@ -314,6 +314,12 @@ sudo innerwarden-config-sign dns-guard rehearse --window 60   # flags essentials
 sudo innerwarden-config-sign dns-guard status
 ```
 
+The first line writes into InnerWarden's own data directory. An agent working
+under an enforcing Community guard (1.6.12 or newer) is refused it, even though
+it adds a name to a deny list: the guard does not weigh what a write to its own
+files is for. That line is the person's to run, in their own terminal. The two
+read-only lines after it go through.
+
 The guard listens on `127.0.0.1:53`. Put it in enforce (licence needed), point
 the agent's resolver at it (`sudo innerwarden-config-sign dns-guard scope-agent
 --pid "$PID" --apply`; without `--apply` it only prints), then:

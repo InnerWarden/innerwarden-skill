@@ -86,8 +86,9 @@ With no local MCP servers the row reads "not guarded" while the second line
 says "screened": the row only knows the MCP side. `innerwarden openclaw
 status` prints the plugin's line alone.
 
-**`innerwarden status` is wrong about this in 1.6.11.** For OpenClaw it still
-says "Its built-in tools are not screened by this edition", even with the
+**`innerwarden status` is wrong about this in 1.6.11 and 1.6.12.** For
+OpenClaw it still says "Its built-in tools are not screened by this edition",
+even with the
 plugin installed. Do not repeat that sentence: for OpenClaw, the line in
 `agents list` ("OpenClaw's own tools: screened, monitor|enforce") is the
 accurate one.

@@ -60,9 +60,10 @@ what you will see on the release pages. Its tools are `innerwarden-ctl` and
 
 Read this before any command that changes the guard.
 
-Since Community 1.6.6 an AI agent **cannot lower its own guard**. From inside
-Claude Code, Codex or Gemini, and since 1.6.11 OpenClaw's exec shell, the CLI
-refuses, exits 1, changes nothing and says so:
+An AI agent **does not lower its own guard**, and the guard refuses the
+commands that would. Since Community 1.6.6, from inside Claude Code, Codex or
+Gemini, and since 1.6.11 OpenClaw's exec shell, the CLI refuses, exits 1,
+changes nothing and says so:
 
 - `innerwarden agents connect ... --monitor`
 - `innerwarden agents disconnect`
@@ -78,6 +79,37 @@ the plugin, in enforce, refuses the same before they run, and also any attempt
 to remove, disable or rewrite the plugin itself. Agents wired only through the
 MCP proxy (Codex, Gemini, Cursor) have no such hook on their shell. Treat
 every one of these as the person's either way.
+
+Since Community 1.6.12 an enforcing hook reads such a command the way the
+shell runs it (behind `sudo` or `env`, as the argument of a shell or of `ssh`,
+in a variable the line builds), and it refuses three more things:
+
+- **A shell write to what carries the guard**: the agent settings that load
+  its hook, the guard's configuration and the `innerwarden` program. A
+  redirection, `tee`, `cp`, `mv`, `rm`, `ln`, `install`, `sed -i`, `dd`, a
+  download saved over the file and a `chmod` that closes it to its owner all
+  count. So does removing or moving an agent's own settings folder.
+- **A line that names the guard and holds a part the guard cannot read**, such
+  as a program run from a variable (`$SSH '...'`, `$TOOL ...`) or from a
+  command substitution. It is refused, not guessed at, with the same message
+  as a command that lowers the guard. Write the program by its name, every
+  word in plain sight, and run it again. That is the only rewrite that is
+  yours to make: when the plain line is refused too, it is the person's.
+- **A hook that gives no answer.** A guard that takes too long now refuses the
+  call (ten seconds; thirty when a model gives a second opinion).
+
+Some ordinary work lands on the same rules, and it is the person's to run:
+copying a new `innerwarden` binary into place, writing a project's
+`.mcp.json` or `.claude/settings.json` from the shell, removing a project's
+`.claude` folder, `chmod 400` on an agent's settings file. Say which command,
+say why it is theirs, and wait.
+
+Do not tell the person the guard cannot be lowered at all. It reads the text
+of one command before it runs, and what that does not see is written down in
+[the guard and its own switches](https://github.com/InnerWarden/inner-warden/blob/main/docs/features.md#the-guard-and-its-own-switches).
+On Linux, InnerWarden Pro works below the text, at the host: armed for an
+agent, its Execution Gate decides in the kernel which programs that agent may
+start. It is off until the person arms it.
 
 That is the product working. **Do not look for a way around it**: no unsetting
 environment variables, no wrapper script, no other launcher, no `--operator`
@@ -125,11 +157,11 @@ enforce, you cannot set it from inside an agent. Offer the choice in step 2.
 
 ## The sequence
 
-**Be on current versions.** At the time of writing, Community is 1.6.11 and Pro
+**Be on current versions.** At the time of writing, Community is 1.6.12 and Pro
 is 0.17.18. Check what is actually installed rather than assuming:
 
 ```sh
-innerwarden --version        # 1.6.11 or newer; it also names Pro when present
+innerwarden --version        # 1.6.12 or newer; it also names Pro when present
 innerwarden-ctl --version    # only on a Pro host: 0.17.18 or newer
 ```
 
@@ -212,6 +244,10 @@ server's own command is wrapped in that agent's MCP config:
 innerwarden proxy --mode advisory -- <server command>   # records only
 innerwarden proxy --mode guard    -- <server command>   # blocks a denied call
 ```
+
+Under an enforcing hook that edit of the agent's MCP config is refused to an
+agent (through the file tools already in 1.6.11, from the shell since 1.6.12):
+give the person the wrapped line and let them make it.
 
 Never change an existing `--mode guard` wrapper to `advisory`; that lowers the
 guard, and it is the person's.
@@ -335,8 +371,8 @@ innerwarden allow "<glob>"               # the PERSON's: stop asking about a tru
 innerwarden enforce                      # when the person decides: denials become real, THEN restart
 ```
 
-In 1.6.11 `status` (and the dashboard's line on what judges each agent) still
-says OpenClaw's built-in tools are not screened, even with the plugin
+In 1.6.11 and 1.6.12 `status` (and the dashboard's line on what judges each
+agent) still says OpenClaw's built-in tools are not screened, even with the plugin
 installed. For OpenClaw, `innerwarden agents list` is the accurate line:
 "OpenClaw's own tools: screened, monitor" (or `enforce`). Do not repeat the
 `status` sentence for OpenClaw.
