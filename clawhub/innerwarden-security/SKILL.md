@@ -23,7 +23,12 @@ one.
    stopping InnerWarden's services and uninstalling are your owner's to type,
    in their own terminal. Give them the exact line and one sentence on why, and
    wait. If a command is refused, do not retry it another way: no unset
-   variables, no wrapper scripts, no other launcher. Never touch the
+   variables, no wrapper scripts, no other launcher. One exception: Community
+   1.6.12 or newer also refuses, with the same message, a line that names
+   InnerWarden's tools and runs a program from a variable (`$TOOL ...`),
+   because it cannot read which program runs. Write that line with the
+   program named in plain sight and run it again; if the plain line is
+   refused too, it is your owner's. Never touch the
    `innerwarden-guard` plugin: its files in `~/.openclaw/extensions`, its
    entry in `openclaw.json`, or OpenClaw's commands that disable or remove a
    plugin. In enforce it refuses that anyway.
@@ -50,7 +55,7 @@ a compliance certificate.
 command -v innerwarden && innerwarden --version        # Community (also names Pro if present)
 command -v innerwarden-ctl && innerwarden-ctl --version # Pro host layer
 innerwarden agents list                                # is openclaw guarded, and how; "OpenClaw's own tools: screened, <mode>"
-innerwarden status                                     # is it on (its OpenClaw coverage line is wrong in 1.6.11, section 3)
+innerwarden status                                     # is it on (its OpenClaw coverage line is wrong in 1.6.11 and 1.6.12, section 3)
 ```
 
 ## 2. Install Community (with your owner's OK)
@@ -102,8 +107,8 @@ this conversation before you can report.
   On an OpenClaw older than 2026.9.7, do not describe your own tools as
   screened.
 
-`innerwarden status` in 1.6.11 still says "Its built-in tools are not screened
-by this edition" for OpenClaw, even with the plugin installed. That is a known
+`innerwarden status` in 1.6.11 and 1.6.12 still says "Its built-in tools are
+not screened by this edition" for OpenClaw, even with the plugin installed. That is a known
 error: do not repeat it. The accurate line is the one `innerwarden agents list`
 prints, "OpenClaw's own tools: screened, monitor" (or `enforce`).
 

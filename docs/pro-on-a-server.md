@@ -17,14 +17,21 @@ say; it is the same thing. Once it is installed, day-to-day running is in
 
 ## Every command below assumes this
 
-Every `ssh` line in this document is written as `$SSH '...'`, because writing
-them as `ssh <user>@<host>` invites dropping the `-i <key>` and failing on any
-host that is not in `~/.ssh/config`. Agent shells often do not keep variables
-between commands, so either write `ssh -i <key> <user>@<host>` in full in every
-command, or start each one with the assignment:
+Every `ssh` line in this document is written out in full, as
+`ssh -i <key> <user>@<host> '...'`. Put the operator's key path, user and
+address in place of the three placeholders, in every command: dropping the
+`-i <key>` fails on any host that is not in `~/.ssh/config`.
+
+Do not shorten it to a shell variable (`$SSH '...'`, as this page used to).
+Agent shells often do not keep variables between commands. And since Community
+1.6.12, an enforcing guard on the machine you run these from refuses a line
+that runs a program from a variable and names one of InnerWarden's tools: it
+cannot read which program that line runs, so it does not guess. The refusal
+reads like the one for a command that lowers the guard. Written out in full,
+the same line goes through.
 
 ```sh
-SSH="ssh -i <key> <user>@<host>"; $SSH 'echo ok'
+ssh -i <key> <user>@<host> 'echo ok'
 ```
 
 ## Before you run a single command, ASK
@@ -39,7 +46,7 @@ needs one, hand the operator the command and let them run it.
 
 1. **The server.** Address or hostname, the SSH user, and the private key path if
    it is not their default. You need to be able to run
-   `$SSH 'echo ok'` and see `ok`.
+   `ssh -i <key> <user>@<host> 'echo ok'` and see `ok`.
 2. **The licence file.** Pro is paid; buying it at
    <https://innerwarden.com/pricing> emails the licence as an attachment named
    `license.txt`, and it can be downloaded again from
@@ -53,7 +60,7 @@ needs one, hand the operator the command and let them run it.
    install can run unattended at all. Check it rather than asking them to guess:
 
    ```sh
-   $SSH 'sudo -n true 2>&1 || echo NEEDS_PASSWORD'
+   ssh -i <key> <user>@<host> 'sudo -n true 2>&1 || echo NEEDS_PASSWORD'
    ```
 
    If it prints `NEEDS_PASSWORD`, **stop**. You cannot type a sudo password into
@@ -77,7 +84,7 @@ needs one, hand the operator the command and let them run it.
 One command answers most of what you would otherwise have to ask:
 
 ```sh
-$SSH 'uname -m; uname -r; . /etc/os-release && echo "$PRETTY_NAME"
+ssh -i <key> <user>@<host> 'uname -m; uname -r; . /etc/os-release && echo "$PRETTY_NAME"
       grep -o bpf /sys/kernel/security/lsm || echo NO-BPF
       df -h / | awk "NR==2{print \$4\" free\"}"
       sudo -n true 2>/dev/null && echo "SUDO-OK" || echo "SUDO-NEEDS-PASSWORD"
@@ -165,7 +172,7 @@ yourself now rather than discovering the mismatch when the installer refuses:
 
 ```sh
 # only when host is not "*"
-$SSH 'cat /etc/machine-id'      # must equal the licence's "host" value
+ssh -i <key> <user>@<host> 'cat /etc/machine-id'      # must equal the licence's "host" value
 ```
 
 If they differ, stop: the operator has been given a licence for a different
@@ -176,13 +183,18 @@ Then copy it over, lock it down, and confirm it survived the trip:
 
 ```sh
 scp -i <key> <local-licence-path> <user>@<host>:/tmp/license.key
-$SSH 'chmod 600 /tmp/license.key; head -c 40 /tmp/license.key; echo'
+ssh -i <key> <user>@<host> 'chmod 600 /tmp/license.key; head -c 40 /tmp/license.key; echo'
 ```
 
 `chmod 600` because `/tmp` is world-readable and a licence is a credential. The
 `head` is not decoration: a licence downloaded from behind a login arrives as an
 HTML page, and you want to see `{"customer_id"` now rather than a confusing
 failure in three minutes.
+
+If a Community guard is enforcing on the machine you run these from, it refuses
+both lines: to it a `.key` file is a credential, and each line reads one. They
+are the person's to run, in their own terminal. Give them the two lines and
+wait for the `{"customer_id"` they see.
 
 The check above runs on your own machine, so a server without `python3` is no
 obstacle. Never skip it.
@@ -192,7 +204,7 @@ machine and on the server:
 
 ```sh
 rm -f /tmp/lic-check.py /tmp/license.key
-$SSH 'rm -f /tmp/license.key'
+ssh -i <key> <user>@<host> 'rm -f /tmp/license.key'
 ```
 
 The installer copies the licence to `/etc/innerwarden/license.key`, so the one in
@@ -201,7 +213,7 @@ The installer copies the licence to `/etc/innerwarden/license.key`, so the one i
 ## 3. Install, WITHOUT a terminal
 
 ```sh
-$SSH 'curl -fsSL https://innerwarden.com/install | sudo bash -s -- --license=/tmp/license.key'
+ssh -i <key> <user>@<host> 'curl -fsSL https://innerwarden.com/install | sudo bash -s -- --license=/tmp/license.key'
 ```
 
 Two things about this command are load-bearing.
@@ -233,8 +245,8 @@ bug. Tell them: press ENTER, then `~`, then `.`
 The installer prints a success banner. Confirm the machine agrees:
 
 ```sh
-$SSH 'for u in innerwarden-sensor innerwarden-watchdog innerwarden-dns-guard; do printf "%-26s %s\n" "$u" "$(systemctl is-active $u 2>&1)"; done'
-$SSH 'innerwarden-ctl --version'
+ssh -i <key> <user>@<host> 'for u in innerwarden-sensor innerwarden-watchdog innerwarden-dns-guard; do printf "%-26s %s\n" "$u" "$(systemctl is-active $u 2>&1)"; done'
+ssh -i <key> <user>@<host> 'innerwarden-ctl --version'
 ```
 
 Expect `active` for all three.
@@ -248,7 +260,7 @@ thing to do and it looks like a fault.
 Now confirm the licence was accepted:
 
 ```sh
-$SSH 'sudo innerwarden-ctl arm --check'
+ssh -i <key> <user>@<host> 'sudo innerwarden-ctl arm --check'
 ```
 
 Look for a line reading `licence   present, N feature(s) granted`. `arm --check`
@@ -258,8 +270,8 @@ operator who wants to see what the paid tier knows about their host.
 For the licence on its own, in detail, the verb is on the **other** binary:
 
 ```sh
-$SSH 'sudo innerwarden-config-sign license status'
-$SSH 'sudo innerwarden-config-sign license status --json'   # for you to parse
+ssh -i <key> <user>@<host> 'sudo innerwarden-config-sign license status'
+ssh -i <key> <user>@<host> 'sudo innerwarden-config-sign license status --json'   # for you to parse
 ```
 
 It reports the customer, whether the host binding matches this machine's
@@ -302,7 +314,7 @@ Until a login exists the dashboard answers **503** to everyone, by design.
 Create it:
 
 ```sh
-$SSH 'sudo innerwarden-ctl dashboard login'
+ssh -i <key> <user>@<host> 'sudo innerwarden-ctl dashboard login'
 ```
 
 (Or, so the password never crosses your session, the operator runs it with
@@ -321,7 +333,7 @@ them into a shared or logged channel. It also restarts the watchdog to apply the
 change, which is expected.
 
 ```sh
-$SSH 'sudo innerwarden-ctl dashboard'
+ssh -i <key> <user>@<host> 'sudo innerwarden-ctl dashboard'
 ```
 
 **This is a status command. It prints and exits; it does not serve anything and
@@ -353,7 +365,7 @@ otherwise cost you the demo, all confirmed on a real host:
 Prove it serves before you say it is ready:
 
 ```sh
-$SSH 'curl -sk -o /dev/null -w "%{http_code}\n" https://127.0.0.1:8787/'
+ssh -i <key> <user>@<host> 'curl -sk -o /dev/null -w "%{http_code}\n" https://127.0.0.1:8787/'
 ```
 
 Expect **401**. The 401 is the point: the dashboard is fail-closed and refuses
@@ -371,7 +383,7 @@ softer standard that lets a broken install be reported as done. Run this and
 require `ALL CHECKS PASSED`:
 
 ```sh
-$SSH 'bash -s' <<'EOF'
+ssh -i <key> <user>@<host> 'bash -s' <<'EOF'
 fail=0
 chk() { printf "  %-34s %s\n" "$1" "$2"; [ "$2" = "$3" ] || { echo "        expected: $3"; fail=1; }; }
 
@@ -381,9 +393,10 @@ done
 # innerwarden-agent is deliberately NOT checked: the watchdog owns its
 # lifecycle and the unit reads 'inactive' on a correct paid install.
 
-chk "licence present" \
-    "$(sudo innerwarden-ctl arm --check 2>/dev/null | grep -qiE 'licence +present|license +present' && echo yes || echo no)" \
-    "yes"
+# Not inside $( ): a Community guard on the machine you run this from refuses
+# `innerwarden-ctl arm` in a command substitution, though --check only reads.
+if sudo innerwarden-ctl arm --check 2>/dev/null | grep -qiE 'licence +present|license +present'; then lic=yes; else lic=no; fi
+chk "licence present" "$lic" "yes"
 # Present is not usable: an expired or wrong-host licence keeps the host in
 # free mode. `license status` exits 1 in exactly that case.
 chk "licence usable" \

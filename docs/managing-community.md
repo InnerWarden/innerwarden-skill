@@ -19,6 +19,18 @@ so does OpenClaw's `innerwarden-guard` plugin in enforce. Treat every lowering c
 whatever the agent and whatever lets it through. That is the product working,
 not something to route around.
 
+Since 1.6.12 an enforcing hook also refuses a write from the shell to what
+carries the guard (the agent settings that load its hook, the guard's
+configuration, the `innerwarden` program) and a line that names the guard and
+holds a part it cannot read, such as a program run from a variable. That
+refusal reads like the one for a lowering command. Write such a line with
+every program named in plain sight (`ssh -i <key> <user>@<host> '...'`, not
+`$SSH '...'`) and run it again; if the plain line is refused too, it is the
+person's. Copying a new
+`innerwarden` binary into place, or writing a project's `.mcp.json` or
+`.claude/settings.json` from the shell, is refused by the same rule and is the
+person's to run.
+
 | You may run it | Only the person runs it, in their own terminal |
 |---|---|
 | `innerwarden status`, `agents list`, `check`, `graph`, `notify --test` | `innerwarden agents connect ... --monitor` |
@@ -41,9 +53,9 @@ innerwarden status        # per agent: what is judged before it runs, and what i
 innerwarden agents list   # per agent: guarded or not, and the mechanism (hook, MCP proxy, OpenClaw's plugin)
 ```
 
-`status` speaks plainly about coverage, with one known exception in 1.6.11:
-for OpenClaw it still says "Its built-in tools are not screened by this
-edition", even when the `innerwarden-guard` plugin is installed and screening
+`status` speaks plainly about coverage, with one known exception in 1.6.11
+and 1.6.12: for OpenClaw it still says "Its built-in tools are not screened
+by this edition", even when the `innerwarden-guard` plugin is installed and screening
 them. For OpenClaw, read the line `agents list` prints, "OpenClaw's own tools:
 screened, monitor" (or `enforce`), which is the accurate one, and do not repeat
 the `status` sentence. For every other agent, repeat what `status` says; do not
