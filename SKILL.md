@@ -90,11 +90,11 @@ in a variable the line builds), and it refuses three more things:
   download saved over the file and a `chmod` that closes it to its owner all
   count. So does removing or moving an agent's own settings folder.
 - **A line that names the guard and holds a part the guard cannot read**, such
-  as a program run from a variable (`$SSH '...'`, `$TOOL ...`) or from a
-  command substitution. It is refused, not guessed at, with the same message
-  as a command that lowers the guard. Write the program by its name, every
-  word in plain sight, and run it again. That is the only rewrite that is
-  yours to make: when the plain line is refused too, it is the person's.
+  as a program run from a variable (`$SSH '...'`, `$TOOL ...`). It is
+  refused, not guessed at, with the same message as a command that lowers the
+  guard. Write the program by its name, every word in plain sight, and run it
+  again. That is the only rewrite that is yours to make: when the plain line
+  is refused too, it is the person's.
 - **A hook that gives no answer.** A guard that takes too long now refuses the
   call (ten seconds; thirty when a model gives a second opinion).
 

@@ -25,10 +25,10 @@ one.
    wait. If a command is refused, do not retry it another way: no unset
    variables, no wrapper scripts, no other launcher. One exception: Community
    1.6.12 or newer also refuses, with the same message, a line that names
-   InnerWarden's tools and runs a program from a variable or a command
-   substitution, because it cannot read which program runs. Write that line
-   with the program named in plain sight and run it again; if the plain line
-   is refused too, it is your owner's. Never touch the
+   InnerWarden's tools and runs a program from a variable (`$TOOL ...`),
+   because it cannot read which program runs. Write that line with the
+   program named in plain sight and run it again; if the plain line is
+   refused too, it is your owner's. Never touch the
    `innerwarden-guard` plugin: its files in `~/.openclaw/extensions`, its
    entry in `openclaw.json`, or OpenClaw's commands that disable or remove a
    plugin. In enforce it refuses that anyway.
