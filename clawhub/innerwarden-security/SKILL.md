@@ -55,7 +55,7 @@ a compliance certificate.
 command -v innerwarden && innerwarden --version        # Community (also names Pro if present)
 command -v innerwarden-ctl && innerwarden-ctl --version # Pro host layer
 innerwarden agents list                                # is openclaw guarded, and how; "OpenClaw's own tools: screened, <mode>"
-innerwarden status                                     # is it on (its OpenClaw coverage line is wrong in 1.6.11 and 1.6.12, section 3)
+innerwarden status                                     # is it on (its OpenClaw coverage line is wrong from 1.6.11 to 1.6.13, section 3)
 ```
 
 ## 2. Install Community (with your owner's OK)
@@ -98,16 +98,22 @@ this conversation before you can report.
   answer is a refusal. In enforce the plugin also refuses any attempt to
   remove, disable or rewrite it. Since 1.6.11 the CLI also recognises your
   exec shell as an agent's, so the commands that lower the guard refuse there.
-- **Your MCP servers.** Calls to them go through InnerWarden's proxy. If
-  `openclaw.json` has no local MCP servers, `connect` says so and still
-  installs the plugin.
+  Since 1.6.13 the same rules, in enforce, also refuse starting another agent
+  without the hook that screens it, and a container that hands an agent the
+  host. Those are your owner's.
+- **Your MCP servers.** Calls to them go through InnerWarden's proxy, and
+  since 1.6.13 so does what the servers send back and list: in enforce a
+  secret-shaped value in an answer is masked, and a description that gives
+  you orders is replaced with a short notice. If `openclaw.json` has no local
+  MCP servers, `connect` says so and still installs the plugin.
 - **The limits, which you say too.** The plugin runs inside the OpenClaw
   gateway process, so it is as trustworthy as that process. A `write` or
   `edit` with a relative path is judged from the gateway's working directory.
+  Your other tools, your own file reads among them, are not screened by it.
   On an OpenClaw older than 2026.9.7, do not describe your own tools as
   screened.
 
-`innerwarden status` in 1.6.11 and 1.6.12 still says "Its built-in tools are
+`innerwarden status` from 1.6.11 to 1.6.13 still says "Its built-in tools are
 not screened by this edition" for OpenClaw, even with the plugin installed. That is a known
 error: do not repeat it. The accurate line is the one `innerwarden agents list`
 prints, "OpenClaw's own tools: screened, monitor" (or `enforce`).

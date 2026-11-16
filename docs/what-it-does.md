@@ -20,11 +20,18 @@ is what people actually do.
 
 A screening step between the agent and execution. What the agent tries gets a
 verdict before it runs, over whichever surface that agent exposes: a
-pre-execution hook for Claude Code; for OpenClaw (Community 1.6.11 or newer,
+pre-execution hook for Claude Code (its shell, its file tools and, since
+Community 1.6.13, its read tools); for OpenClaw (Community 1.6.11 or newer,
 OpenClaw 2026.9.7 or newer) a plugin on its `before_tool_call` hook for its own
 `exec`, `process`, `write`, `edit` and `apply_patch`, plus its MCP servers; the
 MCP path for Cursor, Codex and Gemini (for those, calls to their MCP servers,
-not their built-in tools).
+not their built-in tools). Since 1.6.13 the MCP path also screens what a server
+sends back and lists: in its blocking mode a secret-shaped value in an answer
+is masked and a tool description that gives the model orders is replaced with
+a short notice. 1.6.13 ships 85 rules derived from the Agent Threat Rules
+project, 14 more than 1.6.12 (the proxy's start line, `rules=76`, counts the
+ones it loads); the 14 new ones, for tool results and descriptions, alert and
+refuse nothing.
 
 - **allow** with a reason,
 - **review** when it is ambiguous and a human should look,

@@ -20,7 +20,10 @@ say; it is the same thing. Once it is installed, day-to-day running is in
 Every `ssh` line in this document is written out in full, as
 `ssh -i <key> <user>@<host> '...'`. Put the operator's key path, user and
 address in place of the three placeholders, in every command: dropping the
-`-i <key>` fails on any host that is not in `~/.ssh/config`.
+`-i <key>` fails on any host that is not in `~/.ssh/config`. Get the three from
+the operator (below), not from `~/.ssh/config`: under an enforcing Community
+guard a read of that file is refused, from the shell and, since 1.6.13,
+through Claude Code's `Read` tool.
 
 Do not shorten it to a shell variable (`$SSH '...'`, as this page used to).
 Agent shells often do not keep variables between commands. And since Community
@@ -29,6 +32,13 @@ that runs a program from a variable and names one of InnerWarden's tools: it
 cannot read which program that line runs, so it does not guess. The refusal
 reads like the one for a command that lowers the guard. Written out in full,
 the same line goes through.
+
+An agent that reaches a shell only through an MCP server's tool, with the
+guard's proxy in `guard`, can see these lines refused since Community 1.6.13
+when the tool takes the program and its arguments as separate fields: the
+proxy reads `-i <key>` as a private key's path among the arguments, and
+refuses some ordinary calls in that shape too. Then they are the operator's to
+run. Do not reshape the call to get it past.
 
 ```sh
 ssh -i <key> <user>@<host> 'echo ok'
@@ -194,7 +204,8 @@ failure in three minutes.
 If a Community guard is enforcing on the machine you run these from, it refuses
 both lines: to it a `.key` file is a credential, and each line reads one. They
 are the person's to run, in their own terminal. Give them the two lines and
-wait for the `{"customer_id"` they see.
+wait for the `{"customer_id"` they see. Since 1.6.13 Claude Code's `Read` tool
+gets the same verdict on a `.key` file: it is refused too.
 
 The check above runs on your own machine, so a server without `python3` is no
 obstacle. Never skip it.

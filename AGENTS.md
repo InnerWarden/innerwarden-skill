@@ -42,9 +42,12 @@ Since 1.6.12 an enforcing hook reads such a command the way the shell runs it,
 refuses a shell write to what carries the guard (the agent settings that load
 its hook, the guard's configuration, the `innerwarden` program), and refuses a
 line that names the guard and that it cannot read. Write that line plainly;
-never reshape it to get it past. The guard reads text and has written limits
-(`SKILL.md`, "You are inside the thing being guarded"): do not tell the person
-it cannot be lowered at all.
+never reshape it to get it past. Since 1.6.13 it also refuses starting another
+agent without the hook that screens it, a container that hands the agent the
+host, and a Claude Code `Read`, `Grep` or `Glob` of a secret, as it refuses
+`cat` of the same file. Those are the person's. The guard reads text and has
+written limits (`SKILL.md`, "You are inside the thing being guarded"): do not
+tell the person it cannot be lowered at all.
 
 ## The one mistake that ends the session
 

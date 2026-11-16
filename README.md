@@ -43,13 +43,15 @@ Community 1.6.11) OpenClaw's shell, an enforcing Claude Code hook or OpenClaw
 plugin blocks them too, and the skill hands them over instead of working
 around it. Since Community 1.6.12 an enforcing hook also refuses a shell write
 to the files that carry the guard and a line that names the guard and that it
-cannot read. It is a guard that reads text, and its
+cannot read, and since 1.6.13 starting another agent without the hook that
+screens it and a container that hands the agent the host. It is a guard that
+reads text, and its
 [limits are written down](https://github.com/InnerWarden/inner-warden/blob/main/docs/features.md#the-guard-and-its-own-switches).
 
 ```
 $ ./scripts/verify-install.sh --proof iw-proof-ca77e0c4
 
-  PASS  innerwarden 1.6.12
+  PASS  innerwarden 1.6.13
   PASS  a destructive command is DENIED (rm -rf / -> deny)
   PASS  an ordinary command is ALLOWED (ls -la -> allow)
   PASS  the hook REFUSES a denied command (exit 2, which is what an agent obeys)
@@ -86,12 +88,14 @@ be wrong about a path.
 
 InnerWarden screens what the agent tries **before it runs** and returns
 **allow**, **review** or **deny**, with the reasons. Claude Code is covered by a
-pre-execution hook on its Bash and file-tool calls. OpenClaw's own `exec`,
+pre-execution hook on its Bash and file-tool calls and, since Community 1.6.13,
+on its read tools (`Read`, `Grep`, `Glob`). OpenClaw's own `exec`,
 `process`, `write`, `edit` and `apply_patch` are screened by a plugin on its
 `before_tool_call` hook since Community 1.6.11 (OpenClaw 2026.9.7 or newer),
 and its MCP servers through the proxy. For Codex, Gemini and Cursor the guard
-wraps their MCP servers instead, which screens calls to those servers and not
-the agents' own built-in tools.
+wraps their MCP servers instead, which screens calls to those servers (and,
+since 1.6.13, what they send back and list) and not the agents' own built-in
+tools.
 `innerwarden agents list` names the mechanism it used. The verdict is
 computed on your machine: no command is sent anywhere for a judgement, there is
 no account, and no service has to be reachable for the guard to work.

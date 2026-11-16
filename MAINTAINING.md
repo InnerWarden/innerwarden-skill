@@ -32,7 +32,9 @@ So it moves with every user-visible change, in the same round as the release:
 
 What the content must always hold: an agent never lowers its own guard
 (monitor, disconnect, allow, mute, contain, disarm, uninstall are the
-person's); each agent's coverage is stated exactly (for OpenClaw since
+person's); each agent's coverage is stated exactly (for Claude Code since
+Community 1.6.13, its `Read`, `Grep` and `Glob` beside its shell and file
+tools; for OpenClaw since
 Community 1.6.11, its own `exec`, `process`, `write`, `edit` and `apply_patch`
 through the `innerwarden-guard` plugin on OpenClaw 2026.9.7 or newer, plus
 calls to its MCP servers, with the plugin's limits); InnerWarden Pro is never
