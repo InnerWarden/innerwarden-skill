@@ -132,6 +132,11 @@ innerwarden check "kubectl get pods -n payments"     # this one must be allowed
 Every decision is written to `guard-events.jsonl` next to the local graph, with
 the command, the verdict and the reason. That file is what sustains a report.
 
+An agent running these under an enforcing hook may see a `check` line refused
+before it runs: the hook reads the whole line, and the CloudTrail one is
+refused in 1.6.12 and 1.6.13. That line is the person's to run at their own
+terminal. Do not rephrase it to get it past.
+
 **Test the allowed half as hard as the denied half.** A guard that refuses real
 work gets switched off in week two, and the verdicts you should be checking are
 the ones on `terraform plan`, `kubectl get`, `crontab -l`, `git push`,
@@ -203,6 +208,18 @@ innerwarden proxy --mode guard -- npx -y <the mcp server>
 `guard` blocks a disallowed call inline. `advisory` and `warn` record without
 blocking. stdout stays pure MCP; alerts go to stderr.
 
+Since Community 1.6.13 the proxy also screens what comes back. A
+`resources/read` is screened both ways, and in `guard` a secret-shaped value
+in any answer is masked; the descriptions a server lists (tools, parameters,
+resources, prompts) and the instructions it sends when it starts are screened
+for orders aimed at the model, and in `guard` the flagged text is replaced
+with a short notice. `advisory` and `warn` pass the answer on and report it.
+A tool that runs what it is handed is judged by what the call carries, not by
+its name. Measured on 1.6.13 in `guard`: a shell tool call that gives the
+program and its arguments as separate fields can be refused even for an
+ordinary command (`ls` with `-la`). A refused call is not to be reshaped to get
+it past: report it.
+
 ---
 
 ## 4. Testing the host protection
@@ -233,7 +250,9 @@ sudo innerwarden-config-sign dns-guard disarm
 
 ### 4a. Execution Gate: nothing runs without prior authorisation
 
-The full sequence, in order:
+The full sequence, in order. The first `arm` lists programs the gate will
+let run, which authorises them, so under an enforcing Community hook it is
+refused to an agent: it is the person's, as `enforce` is.
 
 ```sh
 PID=$(pgrep -f '<your agent process>' | head -1)
@@ -291,7 +310,8 @@ sudo innerwarden-config-sign secret-guard status
 **The proof, and a trap in it.** Read the protected file from inside the guarded
 cgroup and expect `Operation not permitted`. Use a reader that is **on the
 execution-gate allowlist**, or the exec gate denies the reader first and you
-have measured the wrong control:
+have measured the wrong control. The line reads a `.key` file, so under an
+enforcing Community hook it is refused to an agent; it is the person's:
 
 ```sh
 # python3 is allowlisted above, so a denial here is the READ guard

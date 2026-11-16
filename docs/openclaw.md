@@ -19,7 +19,11 @@ general rules, the person's allow and mute rules, the per-agent profiles, and
 for a file tool, where it writes, never what it writes), and where InnerWarden
 Pro is installed, Pro's `check-command` too, with the stricter answer
 standing. It needs **OpenClaw 2026.9.7 or newer**: on an older OpenClaw, do
-not describe its own tools as screened.
+not describe its own tools as screened. Its other tools, its own file reads
+among them, are not screened by the plugin. Because it asks the same rules,
+what Community 1.6.13 added to them holds for its `exec` too: starting another
+agent without the hook that screens it, and a container that hands the agent
+the host, are refused in enforce.
 
 - **Monitor** (the plugin's default, whatever mode `connect` used for the MCP
   servers) records what enforce would refuse and refuses nothing.
@@ -42,6 +46,10 @@ so that it runs through the guard's proxy:
 ```
 
 `advisory` is monitor (records, refuses nothing) and `guard` is enforce.
+Since 1.6.13 the proxy also screens what a server sends back and lists: in
+`guard` a secret-shaped value in an answer is masked and a description that
+gives the model orders is replaced with a short notice; `advisory` passes them
+on and reports them.
 Remote MCP servers (a `url` instead of a command) are left alone. If the file
 has no local MCP servers, `connect` says so ("has no local MCP servers to
 guard") and still installs the plugin, on the next line.
@@ -86,7 +94,7 @@ With no local MCP servers the row reads "not guarded" while the second line
 says "screened": the row only knows the MCP side. `innerwarden openclaw
 status` prints the plugin's line alone.
 
-**`innerwarden status` is wrong about this in 1.6.11 and 1.6.12.** For
+**`innerwarden status` is wrong about this from 1.6.11 to 1.6.13.** For
 OpenClaw it still says "Its built-in tools are not screened by this edition",
 even with the
 plugin installed. Do not repeat that sentence: for OpenClaw, the line in

@@ -33,14 +33,24 @@ agent:
 
 | Agent | How it is screened |
 |---|---|
-| Claude Code | a pre-execution hook on its `Bash` calls and on its file tools (`Write`, `Edit`, `MultiEdit`, `NotebookEdit`), plus a post-tool hook that remembers where a value came from |
-| Codex CLI, Gemini CLI, Cursor | their MCP servers are rewired to run through the guard's proxy |
+| Claude Code | a pre-execution hook on its `Bash` calls, on its file tools (`Write`, `Edit`, `MultiEdit`, `NotebookEdit`) and, since Community 1.6.13, on its read tools (`Read`, `Grep`, `Glob`), plus a post-tool hook that remembers where a value came from |
+| Codex CLI, Gemini CLI, Cursor | their MCP servers are rewired to run through the guard's proxy, which screens the calls to those servers and, since 1.6.13, what the servers send back and list |
 | OpenClaw | since Community 1.6.11, the plugin `innerwarden-guard` on OpenClaw's `before_tool_call` hook screens its own `exec`, `process`, `write`, `edit` and `apply_patch` calls (OpenClaw 2026.9.7 or newer), and the MCP proxy screens calls to its MCP servers ([`docs/openclaw.md`](docs/openclaw.md)) |
 | Aider | no hook and no MCP: the person starts it inside `innerwarden contain` |
 | Goose, Windsurf, Cline | not wirable yet |
 
 `innerwarden agents list` names the mechanism it used for each one. Read it
 rather than assume.
+
+For Claude Code, a file tool is judged on the file it changes: a privileged
+one (its settings, the guard's configuration, shell startup files, SSH keys,
+scheduled jobs and services, stored credentials) is refused, any other
+passes. A read tool is judged on the files it opens, by the rules a shell read
+gets: a `Read` of a private key, of a tool's stored login or of a `.env`
+outside the project gets the verdict `cat` of the same file gets. The text a
+`Grep` searches for is not judged. A hook wired before 1.6.13 does not cover
+the read tools, and `innerwarden upgrade` from 1.6.12 leaves it that way:
+`innerwarden status` says so and names the line that rewires it.
 
 There are three plans, and the free one is a complete product:
 
@@ -98,11 +108,40 @@ in a variable the line builds), and it refuses three more things:
 - **A hook that gives no answer.** A guard that takes too long now refuses the
   call (ten seconds; thirty when a model gives a second opinion).
 
+Since Community 1.6.13 an enforcing hook also refuses the following. The first
+two hold in OpenClaw's plugin in enforce too, which asks the same rules.
+
+- **Starting another agent without the hook that screens it**: Claude Code
+  started in its bare, safe or restricted mode, or with settings or a
+  variable that switch its hooks off or move the folder they are in. Claude
+  Code started the ordinary way runs. When all the line does is point Claude
+  Code at another settings folder, the refusal names the
+  `innerwarden install claude-code --settings <folder>/settings.json` line
+  that puts the hook there first.
+- **A container that hands the agent the host**: one run, created or entered
+  with full privilege, in the host's process namespace, with a capability or
+  a device that reaches the host, with a host system folder or the host's
+  root mounted, or with the container runtime's socket; and a call to the
+  runtime's API.
+- **A read tool that opens a secret** (Claude Code's `Read`, `Grep`, `Glob`),
+  judged as `cat` of the same file.
+
+Showing a public SSH file (a public key, the known hosts, the authorized keys)
+is no longer refused. A private key and `~/.ssh/config` still are.
+
 Some ordinary work lands on the same rules, and it is the person's to run:
 copying a new `innerwarden` binary into place, writing a project's
 `.mcp.json` or `.claude/settings.json` from the shell, removing a project's
-`.claude` folder, `chmod 400` on an agent's settings file. Say which command,
-say why it is theirs, and wait.
+`.claude` folder, `chmod 400` on an agent's settings file. Since 1.6.13 also:
+a child Claude Code given its home or settings folder in a form the shell does
+not expand to the home folder, a test tool or a browser run in a container
+with full privilege or with the runtime's socket, a recursive `grep`, archive
+or copy of the home or of a hidden folder in it where a key or a stored login
+is kept (`~/.config` among them), and a `Read` of `~/.ssh/config`, of a private
+key kept in a project as a test fixture or of a stored login. A session
+started in the home folder or at `/` names no project, so a read of a `.env`
+from there is refused; the refusal says to start in the project's own folder.
+Say which command, say why it is theirs, and wait.
 
 Do not tell the person the guard cannot be lowered at all. It reads the text
 of one command before it runs, and what that does not see is written down in
@@ -157,11 +196,11 @@ enforce, you cannot set it from inside an agent. Offer the choice in step 2.
 
 ## The sequence
 
-**Be on current versions.** At the time of writing, Community is 1.6.12 and Pro
+**Be on current versions.** At the time of writing, Community is 1.6.13 and Pro
 is 0.17.18. Check what is actually installed rather than assuming:
 
 ```sh
-innerwarden --version        # 1.6.12 or newer; it also names Pro when present
+innerwarden --version        # 1.6.13 or newer; it also names Pro when present
 innerwarden-ctl --version    # only on a Pro host: 0.17.18 or newer
 ```
 
@@ -248,6 +287,12 @@ innerwarden proxy --mode guard    -- <server command>   # blocks a denied call
 Under an enforcing hook that edit of the agent's MCP config is refused to an
 agent (through the file tools already in 1.6.11, from the shell since 1.6.12):
 give the person the wrapped line and let them make it.
+
+Since 1.6.13 the proxy also screens what the server sends back and lists. A
+`resources/read` is screened both ways. In `guard` a secret-shaped value in an
+answer is masked, and a tool, resource or prompt description that gives the
+model orders is replaced with a short notice before the client sees it;
+`advisory` passes them on and reports them.
 
 Never change an existing `--mode guard` wrapper to `advisory`; that lowers the
 guard, and it is the person's.
@@ -371,7 +416,7 @@ innerwarden allow "<glob>"               # the PERSON's: stop asking about a tru
 innerwarden enforce                      # when the person decides: denials become real, THEN restart
 ```
 
-In 1.6.11 and 1.6.12 `status` (and the dashboard's line on what judges each
+From 1.6.11 to 1.6.13 `status` (and the dashboard's line on what judges each
 agent) still says OpenClaw's built-in tools are not screened, even with the plugin
 installed. For OpenClaw, `innerwarden agents list` is the accurate line:
 "OpenClaw's own tools: screened, monitor" (or `enforce`). Do not repeat the
@@ -390,6 +435,13 @@ the user owns. On a remote machine reach it with
   after `enforce`. `innerwarden agents list` reads the config on disk, so it
   shows the new mode at once and is NOT evidence the running session picked it
   up.
+- **After an upgrade to 1.6.13, Claude Code's read tools can still be
+  unscreened.** A hook wired by an earlier version does not cover `Read`,
+  `Grep` and `Glob`, and `innerwarden upgrade` from 1.6.12 does not add them.
+  `innerwarden status` says so on Claude Code's line and names the fix:
+  `innerwarden install claude-code` (yours once the person chose enforce) or
+  `innerwarden install claude-code --monitor` (the person's). Then Claude Code
+  restarts.
 - **Counting decisions does not prove traffic is flowing.** Running
   `innerwarden check` yourself records decisions too, and so does the verify
   script. Only the `--proof` token, run by the agent itself, proves it.

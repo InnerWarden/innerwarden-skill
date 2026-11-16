@@ -31,6 +31,14 @@ person's. Copying a new
 `.claude/settings.json` from the shell, is refused by the same rule and is the
 person's to run.
 
+Since 1.6.13 an enforcing hook also refuses starting another agent without the
+hook that screens it (Claude Code in its bare, safe or restricted mode, or with
+settings or a variable that switch its hooks off or move them), a container
+that hands the agent the host, and a Claude Code `Read`, `Grep` or `Glob` of a
+secret, judged as `cat` of the same file is (`~/.ssh/config` and a stored login
+included). The rest of the list, and what ordinary work it costs, is in
+[`../SKILL.md`](../SKILL.md), "You are inside the thing being guarded".
+
 | You may run it | Only the person runs it, in their own terminal |
 |---|---|
 | `innerwarden status`, `agents list`, `check`, `graph`, `notify --test` | `innerwarden agents connect ... --monitor` |
@@ -53,13 +61,19 @@ innerwarden status        # per agent: what is judged before it runs, and what i
 innerwarden agents list   # per agent: guarded or not, and the mechanism (hook, MCP proxy, OpenClaw's plugin)
 ```
 
-`status` speaks plainly about coverage, with one known exception in 1.6.11
-and 1.6.12: for OpenClaw it still says "Its built-in tools are not screened
+`status` speaks plainly about coverage, with one known exception from 1.6.11
+to 1.6.13: for OpenClaw it still says "Its built-in tools are not screened
 by this edition", even when the `innerwarden-guard` plugin is installed and screening
 them. For OpenClaw, read the line `agents list` prints, "OpenClaw's own tools:
 screened, monitor" (or `enforce`), which is the accurate one, and do not repeat
 the `status` sentence. For every other agent, repeat what `status` says; do not
 improve on it.
+
+For Claude Code, `status` in 1.6.13 names the read tools it judges. When its
+line is `[off]` and says the read tools "can read a private key or a stored
+login unchecked", the hook was wired before 1.6.13: rewire it as the line
+says (`innerwarden install claude-code` once the person chose enforce; the
+`--monitor` form is the person's), then restart Claude Code.
 
 `agents list` reads the configuration on disk. It shows a new mode at once and
 is NOT evidence that a running session picked it up: only a restart does that.
@@ -194,6 +208,11 @@ A copy installed by `apt` or `dnf` is upgraded by that package manager
 (`innerwarden upgrade` says so and stops); an npm copy with
 `npm install -g innerwarden@latest`. `upgrade` also brings the hooks it wrote
 up to date; when it says it rewrote one, restart that agent.
+
+An upgrade to 1.6.13 from an earlier version is the exception: the rewiring is
+done by the version being replaced, which does not know the read tools, so a
+Claude Code hook comes out of it without them. Run `innerwarden status` after
+it and follow Claude Code's line (above, "Is it on?").
 
 On a Pro host the Pro installer does not upgrade an existing free CLI, so the
 person upgrades it this way too.

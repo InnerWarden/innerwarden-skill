@@ -205,7 +205,9 @@ agent seen running programs); it refuses an idle agent unless
 `export`, `trust-path`, `seed-essentials`) is on `innerwarden-config-sign
 exec-gate`. Going back to observe is `exec-gate disarm` and then `arm --observe`
 again, and it is the person's (so is `enforce`, which asks nothing but is the
-decision the whole sequence builds to).
+decision the whole sequence builds to). An `arm` with `--path` authorises those
+programs, so under an enforcing Community hook it is refused to an agent: that
+one is the person's too.
 
 ### Per-agent controls for a jailed Claude Code
 
@@ -228,6 +230,11 @@ On a kernel without `bpf` in its LSM list,
 `sudo innerwarden-ctl agent kernel kill-mode on` stops such a program at the end
 of exec instead. `... claude-code off` and `agent kernel disarm` turn it off;
 both are the person's.
+
+Under an enforcing Community hook every `agent kernel` line here except the
+bare one is refused to an agent, `review`, `check` and `kill-mode on`
+included: the hook reads each as a change to the control that contains the
+agent. Hand them to the person.
 
 ### Secret Read Guard and DNS Guard
 

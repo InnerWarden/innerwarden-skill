@@ -45,8 +45,8 @@ If it is absent, that is a boot-cmdline setting (`lsm=...,bpf`) and a reboot;
 on Debian and Ubuntu the installer writes it for you and asks for the reboot.
 Without it the gate cannot enforce, and the product says so rather than
 pretending. Everything else still works, and for a jailed Claude Code
-`innerwarden-ctl agent kernel kill-mode on` stops an untrusted program at the
-end of exec instead.
+`innerwarden-ctl agent kernel kill-mode on` (the person's to run) stops an
+untrusted program at the end of exec instead.
 
 This matters for cloud images: many distributions ship without `bpf` in the
 stack. Check it before you plan a demo around the gate.
@@ -65,10 +65,11 @@ it should not.
 - **Several agents, one host.** One installation screens all of them.
   `innerwarden agents connect --all` wires everything it finds (the person's
   call: it also rewires agents already set). What it covers
-  differs by agent (Claude Code: hook; OpenClaw: a plugin for its own tools
+  differs by agent (Claude Code: a hook on its shell, its file tools and,
+  since Community 1.6.13, its read tools; OpenClaw: a plugin for its own tools
   since Community 1.6.11, plus its MCP servers; Codex, Gemini, Cursor: their
   MCP servers only; Aider: in a jail), and `innerwarden agents list` says which
-  (for OpenClaw, `innerwarden status` in 1.6.11 and 1.6.12 still says its own
+  (for OpenClaw, `innerwarden status` from 1.6.11 to 1.6.13 still says its own
   tools are not screened; `agents list` is the accurate line).
 
 The screening decision is local either way. Commands are not sent anywhere for a
