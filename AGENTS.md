@@ -12,7 +12,9 @@ CLI's own dashboard is `innerwarden dashboard`; see [`SKILL.md`](SKILL.md).) Rea
 start to finish. It is written for exactly this shape: you on the user's
 machine, a Linux server over SSH. Do not improvise around it and do not start
 from the free-CLI instructions; that path will not give them what they asked
-for.
+for. A server that must send nothing out has an opt-in offline mode since Pro
+0.17.19, in the same document. Agent profiles, new in 0.17.19, are off by
+default and a preview: turning them on is the person's choice, never yours.
 
 **If the user wants their own AI agent screened** (Claude Code, Codex, Gemini,
 Cursor, OpenClaw on the machine in front of them), read [`SKILL.md`](SKILL.md).

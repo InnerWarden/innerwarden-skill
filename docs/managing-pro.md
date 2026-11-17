@@ -103,6 +103,18 @@ curl -fsSL https://innerwarden.com/install | sudo bash -s -- --license=/path/to/
 
 (That also brings the host to the installer's version.)
 
+**On an offline host** (`[network] offline = true`, Pro 0.17.19 or newer) the
+renewal timer is off and `license refresh` sends nothing. The person copies the
+new licence over and installs it:
+
+```sh
+sudo innerwarden-config-sign license install /path/to/license.txt
+```
+
+It checks the signature, the host the licence is for and its expiry before it
+installs the file, never replaces a working licence that runs longer, and
+leaves the installed file as it was when it refuses.
+
 ## The dashboard
 
 ```sh
@@ -281,6 +293,16 @@ restarts and reboots. The DNS Guard is scoped separately, with
 `dns-guard scope-agent --pid <PID> --apply`. See [`openclaw.md`](openclaw.md)
 for what that does and does not cover.
 
+**Agent profiles** (since 0.17.19, Hermes first) are off by default, behind
+`[agent_profiles] enabled` in `agent.toml`. Off, pairing reads no profile and
+nothing is judged differently; `agent connect` prints one line saying profiles
+are off and how to turn them on. That line is for the person. The release
+calls agent profiles a preview and says to keep them off on hosts you rely on.
+Do not turn them on, and do not suggest it. With them on, a re-pairing that finds the
+agent's configuration or code changed records no profile until someone vouches
+for the change with `--accept-profile-changes <digest>`. That vouches for what
+the agent's own account wrote, so it is the person's.
+
 ## Letting another agent ask before it acts
 
 Any process on the host can ask Pro for a verdict before running a command:
@@ -312,7 +334,25 @@ sudo innerwarden-ctl upgrade --version <TAG>   # move onto a specific release ta
 
 Re-running the installer also upgrades. Neither upgrades an existing free CLI:
 the person runs `innerwarden upgrade` as their own user. Keep the free CLI at
-1.6.3 or newer with Pro 0.17.18.
+1.6.3 or newer with Pro 0.17.19.
+
+**Going back from 0.17.19 to 0.17.18** is the person's, and two things come
+with it: the sensor goes back with the agent, and a `[network]` or an
+`[agent_profiles]` section comes out of `/etc/innerwarden/agent.toml` first.
+The 0.17.18 agent does not start with either.
+
+## A host with no route out
+
+`[network] offline = true` in `agent.toml` (written by the installer's
+`--offline` or `--from=<dir>`, Pro 0.17.19 or newer; see
+[`pro-on-a-server.md`](pro-on-a-server.md)) keeps the host from calling out:
+no heartbeat and no install or upgrade ping, none of the default threat feeds
+(a feed listed in `[threat_feeds] ioc_feed_urls` still is), no GeoIP, no
+licence renewal (install a new licence as above), and the DNS Guard with no
+upstream set follows the host's resolver instead of 1.1.1.1. Such a host
+upgrades with `upgrade --from <dir>`, from the release files copied over.
+Known in 0.17.19: the DNS Guard's posture check still looks up its test name,
+so on an offline host it reports the upstream as broken.
 
 ## Removing it
 
@@ -331,3 +371,7 @@ sudo innerwarden-ctl uninstall --dry-run       # what will go
 sudo innerwarden-ctl uninstall --purge --yes   # --purge also removes config, data, the boot change and tagged firewall rules
 innerwarden uninstall                          # the free CLI, as the user who has it
 ```
+
+In 0.17.19 an uninstall does not remove
+`/usr/local/lib/innerwarden/guard-cli-release` or the mask on the licence
+renewal timer.

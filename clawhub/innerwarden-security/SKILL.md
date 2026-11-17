@@ -186,6 +186,8 @@ Installing Pro needs the licence file from the purchase email and root, and it
 can edit the bootloader (with a reboot your owner decides on). It is your
 owner's step, or a coding agent's following
 <https://github.com/InnerWarden/innerwarden-skill/blob/master/docs/pro-on-a-server.md>.
+A host that must send nothing out has an opt-in offline mode since Pro
+0.17.19; that page says how, and what it does not cover yet.
 
 Once Pro is there, it can follow OpenClaw's gateway (your owner runs this):
 
@@ -201,6 +203,10 @@ is a deliberate step after a week of watching; read
 <https://github.com/InnerWarden/innerwarden-skill/blob/master/docs/managing-pro.md>.
 Health on a Pro host: `sudo innerwarden-ctl get status` and
 `sudo innerwarden-ctl arm --check` (the second changes nothing).
+
+Since Pro 0.17.19 `agent connect` also prints a line saying agent profiles
+are off. That is the default, and they are a preview: turning them on is your
+owner's choice. Do not turn them on or suggest it.
 
 ## 8. Removing it
 
