@@ -151,8 +151,11 @@ its allowlist either; `arm` lays a verified copy the gate trusts, and
 `sudo innerwarden-ctl agent pin-guard-cli --pid <PID>` does that on its own.
 Until then, in observe or rehearse, it records and blocks nothing. Turning
 it on is in [`managing-pro.md`](managing-pro.md), and it is a decision for after
-a week of watching, not part of the install. The per-agent controls for jailed
-agents (Programs, Private files, DNS per agent) cover Claude Code only today.
+a week of watching, not part of the install. Since Pro 0.17.19 `connect` also
+prints a line saying agent profiles are off: that is the default, they are a
+preview, and turning them on is the person's choice, not yours. The per-agent
+controls for jailed agents (Programs, Private files, DNS per agent) cover
+Claude Code only today.
 
 ## The ClawHub skill
 

@@ -251,6 +251,35 @@ have run, and step 6 does the same job with explicit commands.
 If the operator ever reports a frozen terminal after an install, that is this
 bug. Tell them: press ENTER, then `~`, then `.`
 
+### A server with no route out
+
+Only when the operator asks for it. Since Pro 0.17.19 the installer has an
+offline mode, off unless asked. `--offline` writes `[network] offline = true`
+into `/etc/innerwarden/agent.toml`; with it the host sends no heartbeat and no
+install or upgrade ping, polls none of the default threat feeds (a feed listed
+in `[threat_feeds] ioc_feed_urls`, such as an internal mirror, still is), has
+GeoIP off and the licence auto-renewal timer off:
+
+```sh
+ssh -i <key> <user>@<host> 'curl -fsSL https://innerwarden.com/install | sudo bash -s -- --offline --license=/tmp/license.key'
+```
+
+An installer older than 0.17.19 stops at `unknown option '--offline'` and
+installs nothing. In 0.17.19, `--offline` on its own still downloads the
+release files and the on-device model during the install, so that line needs
+a route out while it runs. A host with none installs from a bundle of the
+release made on a connected machine, with `--from=<dir>` (or
+`INNERWARDEN_FROM_DIR=<dir>` after `sudo`), which implies `--offline` and checks
+every file against its `.sha256` and its Ed25519 signature, as a download is.
+The tool that makes a bundle is not a release asset in 0.17.19, and the
+installer refuses a folder of release files without the bundle's manifest: if
+the operator has no bundle, say so and stop. Do not assemble one.
+
+Offline mode has been tested part by part, not yet by a full install on a host
+with its egress cut. Say that to the operator before they rely on it. Renewing
+the licence and upgrading such a host are in
+[`managing-pro.md`](managing-pro.md).
+
 ## 4. Verify the install rather than assuming it
 
 The installer prints a success banner. Confirm the machine agrees:

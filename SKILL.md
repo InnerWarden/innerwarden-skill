@@ -197,11 +197,11 @@ enforce, you cannot set it from inside an agent. Offer the choice in step 2.
 ## The sequence
 
 **Be on current versions.** At the time of writing, Community is 1.6.13 and Pro
-is 0.17.18. Check what is actually installed rather than assuming:
+is 0.17.19. Check what is actually installed rather than assuming:
 
 ```sh
 innerwarden --version        # 1.6.13 or newer; it also names Pro when present
-innerwarden-ctl --version    # only on a Pro host: 0.17.18 or newer
+innerwarden-ctl --version    # only on a Pro host: 0.17.19 or newer
 ```
 
 An older free CLI upgrades itself with `innerwarden upgrade` (installer copy) or
@@ -358,6 +358,14 @@ curl -fsSL https://innerwarden.com/install | sudo bash -s -- --license=/path/to/
   Alma and Fedora it edits nothing and prints the `grubby` command instead. Say
   this BEFORE you run the installer: it changes how the machine boots, and no
   kernel control can enforce until it reboots.
+- **A host that must send nothing out** is the person's choice, never a
+  default: since Pro 0.17.19 the installer takes `--offline` (and `--from=DIR`
+  for a bundle of the release). Read "A server with no route out" in
+  [`docs/pro-on-a-server.md`](docs/pro-on-a-server.md) first; in 0.17.19 it
+  has limits.
+- **Agent profiles** (Hermes first, new in 0.17.19) are off by default and a
+  preview. Turning them on is the person's decision; you do not turn them on
+  or suggest it ([`docs/managing-pro.md`](docs/managing-pro.md)).
 
 ### 4. Prove it, do not assume it
 
