@@ -23,7 +23,11 @@ not describe its own tools as screened. Its other tools, its own file reads
 among them, are not screened by the plugin. Because it asks the same rules,
 what Community 1.6.13 added to them holds for its `exec` too: starting another
 agent without the hook that screens it, and a container that hands the agent
-the host, are refused in enforce.
+the host, are refused in enforce, and so is what 1.6.14 added: a destructive
+command inside `sh -c`, every shell write of `authorized_keys`, the sudo
+rules, a crontab or a stored credential, and running the guard's own hook.
+`innerwarden demo` (1.6.14) judges OpenClaw's calls by the MCP proxy's
+rules, not through this plugin, so it does not prove the plugin.
 
 - **Monitor** (the plugin's default, whatever mode `connect` used for the MCP
   servers) records what enforce would refuse and refuses nothing.
@@ -94,7 +98,7 @@ With no local MCP servers the row reads "not guarded" while the second line
 says "screened": the row only knows the MCP side. `innerwarden openclaw
 status` prints the plugin's line alone.
 
-**`innerwarden status` is wrong about this from 1.6.11 to 1.6.13.** For
+**`innerwarden status` is wrong about this from 1.6.11 to 1.6.14.** For
 OpenClaw it still says "Its built-in tools are not screened by this edition",
 even with the
 plugin installed. Do not repeat that sentence: for OpenClaw, the line in

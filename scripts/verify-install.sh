@@ -150,7 +150,7 @@ elif [ "$hook_rc" -eq 0 ]; then
         stopped, whatever the wiring says."
 else
   bad "the hook exited $hook_rc, which is neither a block nor a pass" \
-      "Try it directly: printf '{\"tool_input\":{\"command\":\"rm -rf /\"}}' | innerwarden hook"
+      "Try it directly, in your own terminal (an agent's guard refuses this line since 1.6.14): printf '{\"tool_input\":{\"command\":\"rm -rf /\"}}' | innerwarden hook"
 fi
 
 printf '{"tool_input":{"command":"rm -rf /"}}' | innerwarden hook --monitor >/dev/null 2>&1

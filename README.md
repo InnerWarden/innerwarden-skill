@@ -44,14 +44,16 @@ plugin blocks them too, and the skill hands them over instead of working
 around it. Since Community 1.6.12 an enforcing hook also refuses a shell write
 to the files that carry the guard and a line that names the guard and that it
 cannot read, and since 1.6.13 starting another agent without the hook that
-screens it and a container that hands the agent the host. It is a guard that
+screens it and a container that hands the agent the host, and since 1.6.14 a
+destructive command inside `sh -c` and a shell write of `authorized_keys`,
+the sudo rules, a crontab or a stored credential. It is a guard that
 reads text, and its
 [limits are written down](https://github.com/InnerWarden/inner-warden/blob/main/docs/features.md#the-guard-and-its-own-switches).
 
 ```
 $ ./scripts/verify-install.sh --proof iw-proof-ca77e0c4
 
-  PASS  innerwarden 1.6.13
+  PASS  innerwarden 1.6.14
   PASS  a destructive command is DENIED (rm -rf / -> deny)
   PASS  an ordinary command is ALLOWED (ls -la -> allow)
   PASS  the hook REFUSES a denied command (exit 2, which is what an agent obeys)

@@ -159,6 +159,11 @@ innerwarden hook --block-review < /tmp/payload.json ; echo "exit=$?"
 `exit=2` means blocked. `exit=0` means permitted. The exit code is the whole
 contract: it is what the agent's runtime reads.
 
+These two lines are the person's, at their own terminal. Since Community
+1.6.14 an enforcing guard refuses an agent that runs the guard's own hook,
+payload or not. An agent can show the same refusals with `innerwarden demo`,
+which runs nothing.
+
 ### The two-step attack, which needs a control to mean anything
 
 A value that arrives in a tool RESULT and reappears as an argument later is the
