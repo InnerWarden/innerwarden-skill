@@ -33,7 +33,7 @@ agent:
 
 | Agent | How it is screened |
 |---|---|
-| Claude Code | a pre-execution hook on its `Bash` calls, on its file tools (`Write`, `Edit`, `MultiEdit`, `NotebookEdit`) and, since Community 1.6.13, on its read tools (`Read`, `Grep`, `Glob`), plus a post-tool hook that remembers where a value came from |
+| Claude Code | a pre-execution hook on its `Bash` calls, on its file tools (`Write`, `Edit`, `MultiEdit`, `NotebookEdit`) and, since Community 1.6.13, on its read tools (`Read`, `Grep`, `Glob`), plus a post-tool hook that remembers where a value came from. Since 1.6.14, on macOS and Linux, a hook in enforce whose program is gone or dies refuses the call instead of letting it through |
 | Codex CLI, Gemini CLI, Cursor | their MCP servers are rewired to run through the guard's proxy, which screens the calls to those servers and, since 1.6.13, what the servers send back and list |
 | OpenClaw | since Community 1.6.11, the plugin `innerwarden-guard` on OpenClaw's `before_tool_call` hook screens its own `exec`, `process`, `write`, `edit` and `apply_patch` calls (OpenClaw 2026.9.7 or newer), and the MCP proxy screens calls to its MCP servers ([`docs/openclaw.md`](docs/openclaw.md)) |
 | Aider | no hook and no MCP: the person starts it inside `innerwarden contain` |
@@ -129,6 +129,46 @@ two hold in OpenClaw's plugin in enforce too, which asks the same rules.
 Showing a public SSH file (a public key, the known hosts, the authorized keys)
 is no longer refused. A private key and `~/.ssh/config` still are.
 
+Since Community 1.6.14 an enforcing hook reads more of what a line hands a
+shell, and more of the files an agent could write itself a way back in
+through. What an agent meets:
+
+- **A command inside `sh -c`, `bash -c` or another shell gets the verdict
+  the same command typed directly gets.** `bash -c 'rm -rf ~'` is refused as
+  `rm -rf ~` is. A shell handed a line built at run time (`read X; sh -c
+  "$X"`) is held for review, and a line with more than 64 function calls is
+  refused.
+- **Every shell write of the login, sudo, account, scheduled-job and
+  stored-credential files is refused**: `authorized_keys`, the sudo rules, the
+  account files, crontabs and stored cloud or registry credentials, in every
+  form (a redirection, `tee`, `sed -i`, `cp`, `mv`, `ln`, `install`,
+  `dd`, `truncate`), and every shell write of `~/.ssh/config`. Reading them
+  is unchanged.
+- **Inline interpreter code** (Python, Node, Ruby, Perl, PHP, Lua) that
+  writes an agent's settings, or removes a whole home or the root, is
+  refused.
+- **Running the guard's own hook** (`innerwarden hook ...`, with a payload on
+  its input) is refused, as its `allow`, `mute` and `monitor` are. The hook
+  is what your tool calls go through, not a command for you.
+- **The container runtime reached through its socket** by another client
+  (`curl --unix-socket`, `socat`, `nc -U`, the per-user sockets of rootless
+  Docker, Podman, colima and the like) is refused. `docker ps`, `run`,
+  `build` and `compose` are unchanged.
+- **A recursive search of the home for the start of a credential** (a cloud
+  or token prefix, a private key header) is refused, also when it looks for
+  ordinary text that starts the same way. Killing every process, or init, is
+  refused.
+
+And held for review: replacing a shell startup file from content the line
+does not show (`cp dotfile ~/.bashrc`), `curl -K` with an options file the
+guard does not read, a download piped into a local shell script
+(`curl ... | bash run.sh`), a recursive removal fed by `xargs` from input
+the guard does not see, and a shell tool call with more than 64 KiB of input.
+
+Some lines 1.6.13 refused now run: `cd` into a folder that has the guard's
+name in its path, `grep` with `eval` as a quoted pattern, `python3 -c` that
+imports `os`. `curl -K` is no longer read as `curl -k`.
+
 Some ordinary work lands on the same rules, and it is the person's to run:
 copying a new `innerwarden` binary into place, writing a project's
 `.mcp.json` or `.claude/settings.json` from the shell, removing a project's
@@ -141,7 +181,9 @@ is kept (`~/.config` among them), and a `Read` of `~/.ssh/config`, of a private
 key kept in a project as a test fixture or of a stored login. A session
 started in the home folder or at `/` names no project, so a read of a `.env`
 from there is refused; the refusal says to start in the project's own folder.
-Say which command, say why it is theirs, and wait.
+Since 1.6.14 also: editing `authorized_keys`, the sudo rules, a crontab or a
+stored credential from the shell, in any form, and feeding a test payload to
+`innerwarden hook`. Say which command, say why it is theirs, and wait.
 
 Do not tell the person the guard cannot be lowered at all. It reads the text
 of one command before it runs, and what that does not see is written down in
@@ -159,7 +201,8 @@ remove or loosen the guard yourself.
 
 What you may run, because it only reads: `innerwarden --version`, `status`,
 `agents list`, `check`, `graph`, `notify --test`, `allow --list`,
-`mute --list`, every `--help`.
+`mute --list`, every `--help`, and since 1.6.14 `innerwarden demo` (it runs
+nothing; section 4).
 
 What tightens, and so is allowed to you, but only when the person chose
 enforce (on a machine they set to monitor it overrides their choice):
@@ -196,11 +239,11 @@ enforce, you cannot set it from inside an agent. Offer the choice in step 2.
 
 ## The sequence
 
-**Be on current versions.** At the time of writing, Community is 1.6.13 and Pro
+**Be on current versions.** At the time of writing, Community is 1.6.14 and Pro
 is 0.17.19. Check what is actually installed rather than assuming:
 
 ```sh
-innerwarden --version        # 1.6.13 or newer; it also names Pro when present
+innerwarden --version        # 1.6.14 or newer; it also names Pro when present
 innerwarden-ctl --version    # only on a Pro host: 0.17.19 or newer
 ```
 
@@ -369,6 +412,31 @@ curl -fsSL https://innerwarden.com/install | sudo bash -s -- --license=/path/to/
 
 ### 4. Prove it, do not assume it
 
+Since Community 1.6.14, `innerwarden demo` shows the person their guard
+refusing, from their own install:
+
+```sh
+innerwarden demo     # or --json
+```
+
+It sends four known risky calls (a download piped into a shell, a read of
+`~/.ssh/id_ed25519`, a write to `~/.claude/settings.json`, `rm -rf ~` inside
+`bash -c`) the way each connected agent's own calls go, and prints, per
+agent, what happened to each. **Nothing is run.** It needs a connected agent:
+with none it sends nothing, says how to connect one and exits 3. It exits 0
+when every call sent was refused, and 1 when one would not have been stopped
+(an agent in monitor shows "monitor only") or a wired hook or proxy cannot
+run. For Claude Code the calls go through the hook its settings run. For an
+agent wired through the MCP proxy they are judged by the proxy's own rules,
+with no server started; for OpenClaw that is its MCP side, not the plugin on
+its own tools. A demo call a hook judged is recorded, marked demo, and sends
+no alert.
+
+`demo` is not the proof below. It shows the wiring refuses; it does not show
+the running agent goes through it. In 1.6.14 `innerwarden status` counts the
+demo's calls among the decisions on record, so do not read that count as the
+agent's traffic.
+
 ```sh
 ./scripts/verify-install.sh
 ```
@@ -424,7 +492,7 @@ innerwarden allow "<glob>"               # the PERSON's: stop asking about a tru
 innerwarden enforce                      # when the person decides: denials become real, THEN restart
 ```
 
-From 1.6.11 to 1.6.13 `status` (and the dashboard's line on what judges each
+From 1.6.11 to 1.6.14 `status` (and the dashboard's line on what judges each
 agent) still says OpenClaw's built-in tools are not screened, even with the plugin
 installed. For OpenClaw, `innerwarden agents list` is the accurate line:
 "OpenClaw's own tools: screened, monitor" (or `enforce`). Do not repeat the
@@ -443,13 +511,18 @@ the user owns. On a remote machine reach it with
   after `enforce`. `innerwarden agents list` reads the config on disk, so it
   shows the new mode at once and is NOT evidence the running session picked it
   up.
-- **After an upgrade to 1.6.13, Claude Code's read tools can still be
-  unscreened.** A hook wired by an earlier version does not cover `Read`,
-  `Grep` and `Glob`, and `innerwarden upgrade` from 1.6.12 does not add them.
-  `innerwarden status` says so on Claude Code's line and names the fix:
-  `innerwarden install claude-code` (yours once the person chose enforce) or
-  `innerwarden install claude-code --monitor` (the person's). Then Claude Code
-  restarts.
+- **After an upgrade, read Claude Code's line in `status`.** A hook wired
+  before 1.6.13 does not cover `Read`, `Grep` and `Glob`, and an upgrade to
+  1.6.13 from 1.6.12 does not add them. Since 1.6.14 `innerwarden upgrade`
+  rewires the hooks with the new binary, keeping each hook's mode, and the
+  first hook run of a new version rewires once. A hook line connected by an
+  earlier version has no `timeout` until it is connected again, and `status`
+  says so. When `status` names a fix, it is `innerwarden install claude-code`
+  (yours once the person chose enforce) or `innerwarden install claude-code
+  --monitor` (the person's). Then Claude Code restarts.
+- **Going back from 1.6.14 to 1.6.13 or older** needs `innerwarden uninstall`
+  with the newer binary first: the older one does not recognise the new hook
+  line. That is the person's.
 - **Counting decisions does not prove traffic is flowing.** Running
   `innerwarden check` yourself records decisions too, and so does the verify
   script. Only the `--proof` token, run by the agent itself, proves it.

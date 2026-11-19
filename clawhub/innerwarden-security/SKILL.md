@@ -55,14 +55,14 @@ a compliance certificate.
 command -v innerwarden && innerwarden --version        # Community (also names Pro if present)
 command -v innerwarden-ctl && innerwarden-ctl --version # Pro host layer
 innerwarden agents list                                # is openclaw guarded, and how; "OpenClaw's own tools: screened, <mode>"
-innerwarden status                                     # is it on (its OpenClaw coverage line is wrong from 1.6.11 to 1.6.13, section 3)
+innerwarden status                                     # is it on (its OpenClaw coverage line is wrong from 1.6.11 to 1.6.14, section 3)
 ```
 
 ## 2. Install Community (with your owner's OK)
 
 ```sh
 curl -fsSL https://innerwarden.com/free | sh    # signed binary, checked before install, no root, ~/.local/bin
-innerwarden --version                           # 1.6.11 or newer screens your own tools
+innerwarden --version                           # 1.6.11 or newer screens your own tools; current is 1.6.14
 ```
 
 An older one upgrades with `innerwarden upgrade` (your owner's OK first).
@@ -100,7 +100,15 @@ this conversation before you can report.
   exec shell as an agent's, so the commands that lower the guard refuse there.
   Since 1.6.13 the same rules, in enforce, also refuse starting another agent
   without the hook that screens it, and a container that hands an agent the
-  host. Those are your owner's.
+  host. Since 1.6.14 a command inside `sh -c` or `bash -c` gets the verdict
+  the same command typed directly gets; every shell write of
+  `authorized_keys`, the sudo rules, a crontab, a stored credential or
+  `~/.ssh/config` is refused; inline interpreter code that writes an agent's
+  settings or wipes a home is refused; and running InnerWarden's own hook is
+  refused. A startup file replaced from a copy, `curl -K` with an options
+  file it does not read, a download piped into a local script and a shell
+  handed a line built at run time are held for review. Those are your
+  owner's.
 - **Your MCP servers.** Calls to them go through InnerWarden's proxy, and
   since 1.6.13 so does what the servers send back and list: in enforce a
   secret-shaped value in an answer is masked, and a description that gives
@@ -113,7 +121,7 @@ this conversation before you can report.
   On an OpenClaw older than 2026.9.7, do not describe your own tools as
   screened.
 
-`innerwarden status` from 1.6.11 to 1.6.13 still says "Its built-in tools are
+`innerwarden status` from 1.6.11 to 1.6.14 still says "Its built-in tools are
 not screened by this edition" for OpenClaw, even with the plugin installed. That is a known
 error: do not repeat it. The accurate line is the one `innerwarden agents list`
 prints, "OpenClaw's own tools: screened, monitor" (or `enforce`).
@@ -131,6 +139,12 @@ innerwarden check "rm -rf /"       # must come back deny
 innerwarden check "ls -la"         # must come back allow
 innerwarden agents list            # "OpenClaw's own tools: screened, monitor|enforce"
 ```
+
+Since 1.6.14 `innerwarden demo` sends four known risky calls through each
+connected agent's guard path and shows which were refused. Nothing is run,
+and with no agent connected it sends nothing and exits 3. For you it judges
+the calls by the MCP proxy's rules, with no server started: it does not go
+through the plugin on your own tools, so it does not prove the plugin.
 
 For the full proof, your owner can run `scripts/verify-install.sh` from
 <https://github.com/InnerWarden/innerwarden-skill>. Its last step, after the

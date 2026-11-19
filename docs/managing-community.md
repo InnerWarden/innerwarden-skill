@@ -36,16 +36,19 @@ hook that screens it (Claude Code in its bare, safe or restricted mode, or with
 settings or a variable that switch its hooks off or move them), a container
 that hands the agent the host, and a Claude Code `Read`, `Grep` or `Glob` of a
 secret, judged as `cat` of the same file is (`~/.ssh/config` and a stored login
-included). The rest of the list, and what ordinary work it costs, is in
+included). Since 1.6.14 it also gives a command inside `sh -c` the verdict
+the same command typed directly gets, refuses every shell write of
+`authorized_keys`, the sudo rules, a crontab, a stored credential or
+`~/.ssh/config`, and refuses running the guard's own hook. The rest of the list, and what ordinary work it costs, is in
 [`../SKILL.md`](../SKILL.md), "You are inside the thing being guarded".
 
 | You may run it | Only the person runs it, in their own terminal |
 |---|---|
-| `innerwarden status`, `agents list`, `check`, `graph`, `notify --test` | `innerwarden agents connect ... --monitor` |
+| `innerwarden status`, `agents list`, `check`, `graph`, `notify --test`, `demo` (1.6.14) | `innerwarden agents connect ... --monitor` |
 | `allow --list`, `mute --list`, every `--help` | `innerwarden agents disconnect` |
 | `innerwarden agents connect <agent>` (enforce, only when the person chose it) | `innerwarden install <agent> --monitor` |
 | `innerwarden enforce`, `innerwarden install claude-code` (same condition) | `innerwarden dry-run` (back to monitor) |
-| `innerwarden contain --dry-run -- <command>` | `innerwarden contain ...` (starting a jail) |
+| `innerwarden contain --dry-run -- <command>` | `innerwarden contain ...` (starting a jail, `--pass-env` included) |
 | `innerwarden upgrade --check` | `innerwarden allow "<glob>"`, `innerwarden mute <rule>` |
 | | `innerwarden graph --clear`, `innerwarden uninstall` |
 
@@ -62,7 +65,7 @@ innerwarden agents list   # per agent: guarded or not, and the mechanism (hook, 
 ```
 
 `status` speaks plainly about coverage, with one known exception from 1.6.11
-to 1.6.13: for OpenClaw it still says "Its built-in tools are not screened
+to 1.6.14: for OpenClaw it still says "Its built-in tools are not screened
 by this edition", even when the `innerwarden-guard` plugin is installed and screening
 them. For OpenClaw, read the line `agents list` prints, "OpenClaw's own tools:
 screened, monitor" (or `enforce`), which is the accurate one, and do not repeat
@@ -212,7 +215,13 @@ up to date; when it says it rewrote one, restart that agent.
 An upgrade to 1.6.13 from an earlier version is the exception: the rewiring is
 done by the version being replaced, which does not know the read tools, so a
 Claude Code hook comes out of it without them. Run `innerwarden status` after
-it and follow Claude Code's line (above, "Is it on?").
+it and follow Claude Code's line (above, "Is it on?"). Since 1.6.14
+`upgrade` rewires the hooks with the new binary, keeping each hook's mode, and
+the first hook run of a new version rewires once. A hook line connected by an
+earlier version has no `timeout` until it is connected again; `status` says
+so. Going back from 1.6.14 to 1.6.13 or older needs `innerwarden uninstall`
+with the newer binary first (the person's): the older one does not recognise
+the new hook line.
 
 On a Pro host the Pro installer does not upgrade an existing free CLI, so the
 person upgrades it this way too.

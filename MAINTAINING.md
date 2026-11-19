@@ -16,7 +16,10 @@ So it moves with every user-visible change, in the same round as the release:
    `scripts/verify-install.sh` with the new binary in a throwaway home: no
    agent exits 1; a wired agent gives "Wiring confirmed"; `--proof` with a
    token sent through `innerwarden hook` (or, for OpenClaw, through
-   `innerwarden openclaw screen`, the path its plugin uses) exits 0.
+   `innerwarden openclaw screen`, the path its plugin uses) exits 0. Since
+   Community 1.6.14 an enforcing guard refuses an agent that runs
+   `innerwarden hook`, so the token step is the maintainer's at their own
+   terminal (or the wired agent's own `echo`).
 4. Pull request, review, merge.
 5. Republish the ClawHub copy from the merge commit:
 

@@ -69,7 +69,7 @@ it should not.
   since Community 1.6.13, its read tools; OpenClaw: a plugin for its own tools
   since Community 1.6.11, plus its MCP servers; Codex, Gemini, Cursor: their
   MCP servers only; Aider: in a jail), and `innerwarden agents list` says which
-  (for OpenClaw, `innerwarden status` from 1.6.11 to 1.6.13 still says its own
+  (for OpenClaw, `innerwarden status` from 1.6.11 to 1.6.14 still says its own
   tools are not screened; `agents list` is the accurate line).
 
 The screening decision is local either way. Commands are not sent anywhere for a

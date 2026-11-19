@@ -47,7 +47,10 @@ line that names the guard and that it cannot read. Write that line plainly;
 never reshape it to get it past. Since 1.6.13 it also refuses starting another
 agent without the hook that screens it, a container that hands the agent the
 host, and a Claude Code `Read`, `Grep` or `Glob` of a secret, as it refuses
-`cat` of the same file. Those are the person's. The guard reads text and has
+`cat` of the same file. Since 1.6.14 a command inside `sh -c` gets the
+verdict the same command typed directly gets, every shell write of
+`authorized_keys`, the sudo rules, a crontab or a stored credential is
+refused, and so is running the guard's own hook. Those are the person's. The guard reads text and has
 written limits (`SKILL.md`, "You are inside the thing being guarded"): do not
 tell the person it cannot be lowered at all.
 
