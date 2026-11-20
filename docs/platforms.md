@@ -67,10 +67,12 @@ it should not.
   call: it also rewires agents already set). What it covers
   differs by agent (Claude Code: a hook on its shell, its file tools and,
   since Community 1.6.13, its read tools; OpenClaw: a plugin for its own tools
-  since Community 1.6.11, plus its MCP servers; Codex, Gemini, Cursor: their
-  MCP servers only; Aider: in a jail), and `innerwarden agents list` says which
-  (for OpenClaw, `innerwarden status` from 1.6.11 to 1.6.14 still says its own
-  tools are not screened; `agents list` is the accurate line).
+  since Community 1.6.11, plus its MCP servers; Codex and Gemini: their own
+  hook since Community 1.6.15, plus their MCP servers; Hermes: its own hook
+  since 1.6.15, not its MCP servers; Cursor: its MCP servers only; Aider: in a jail), and
+  `innerwarden agents list` says which (for OpenClaw, `innerwarden status`
+  from 1.6.11 to 1.6.14 says its own tools are not screened; `agents list` is
+  the accurate line there).
 
 The screening decision is local either way. Commands are not sent anywhere for a
 verdict, there is no account to create, and there is no service that has to be

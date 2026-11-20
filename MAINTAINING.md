@@ -40,5 +40,7 @@ Community 1.6.13, its `Read`, `Grep` and `Glob` beside its shell and file
 tools; for OpenClaw since
 Community 1.6.11, its own `exec`, `process`, `write`, `edit` and `apply_patch`
 through the `innerwarden-guard` plugin on OpenClaw 2026.9.7 or newer, plus
-calls to its MCP servers, with the plugin's limits); InnerWarden Pro is never
+calls to its MCP servers, with the plugin's limits; for Codex, Gemini and
+Hermes since Community 1.6.15, what their own hook screens and the tools it
+does not, as `agents connect` prints it); InnerWarden Pro is never
 called open source; kernel enforcement is Linux only; no em dashes.

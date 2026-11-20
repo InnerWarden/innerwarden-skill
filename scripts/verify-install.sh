@@ -21,10 +21,12 @@
 # Why --proof: counting recorded decisions cannot prove traffic. `innerwarden
 # check`, this script's own probes and a previous run all record decisions, so a
 # second run would read its own footprints and call it screening. The proof is a
-# unique token the restarted agent itself runs (Claude Code, and OpenClaw since
-# Community 1.6.11 through its own `exec` tool: `echo TOKEN`; an agent wired
-# through the MCP proxy only: any call to one of its MCP tools with TOKEN in an
-# argument), found in the decision graph on a channel that is not `check`.
+# unique token the restarted agent itself runs (Claude Code, OpenClaw since
+# Community 1.6.11 through its own `exec` tool, and Codex, Gemini and Hermes
+# connected with Community 1.6.15 or newer through their own shell tool, which
+# their hook screens: `echo TOKEN`; an agent wired through the MCP proxy only:
+# any call to one of its MCP tools with TOKEN in an argument), found in the
+# decision graph on a channel that is not `check`.
 # OpenClaw's plugin records its decisions as the Claude Code hook does
 # (channel `hook`, agent `openclaw`), so the same search finds them.
 
@@ -258,8 +260,10 @@ if [ -n "$proof" ]; then
     bad "nothing carrying '$proof' reached the guard from an agent" \
         "Either the agent was not restarted after wiring, or its command took a
         path the guard does not see (for agents wired through the MCP proxy
-        only, such as Codex, Gemini or Cursor, only MCP tool calls are
-        screened, not their own shell; OpenClaw's own exec is screened by its
+        only, such as Cursor or a Codex or Gemini connected before Community
+        1.6.15, only MCP tool calls are screened, not their own shell; Codex,
+        Gemini and Hermes connected with 1.6.15 or newer are screened through
+        their own hook; OpenClaw's own exec is screened by its
         plugin from Community 1.6.11 on OpenClaw 2026.9.7 or newer, once the
         gateway restarted). Restart the agent, have it run the token again,
         and re-run this script with --proof $proof."
@@ -367,9 +371,10 @@ else
   echo "  proves the RUNNING agent goes through it yet. For that:"
   echo "    1. restart the agent (a session opened before the wiring is not screened);"
   echo "    2. ask it to run:  echo $token"
-  echo "       (OpenClaw: with its own exec tool, which its plugin screens; an agent"
-  echo "       wired through the MCP proxy only: any call to one of its MCP tools"
-  echo "       with $token in it);"
+  echo "       (OpenClaw: with its own exec tool, which its plugin screens; Codex,"
+  echo "       Gemini or Hermes connected with 1.6.15 or newer: with its own shell"
+  echo "       tool, which its hook screens; an agent wired through the MCP proxy"
+  echo "       only: any call to one of its MCP tools with $token in it);"
   echo "    3. re-run:  $0 --proof $token"
   echo "  THAT is the proof."
 fi

@@ -27,7 +27,9 @@ the host, are refused in enforce, and so is what 1.6.14 added: a destructive
 command inside `sh -c`, every shell write of `authorized_keys`, the sudo
 rules, a crontab or a stored credential, and running the guard's own hook.
 `innerwarden demo` (1.6.14) judges OpenClaw's calls by the MCP proxy's
-rules, not through this plugin, so it does not prove the plugin.
+rules, not through this plugin, so it does not prove the plugin. Since 1.6.15
+a call past 1 MiB is never judged on the part that was read: it is refused in
+enforce, and said to have gone unscreened in monitor.
 
 - **Monitor** (the plugin's default, whatever mode `connect` used for the MCP
   servers) records what enforce would refuse and refuses nothing.
@@ -99,11 +101,12 @@ says "screened": the row only knows the MCP side. `innerwarden openclaw
 status` prints the plugin's line alone.
 
 **`innerwarden status` is wrong about this from 1.6.11 to 1.6.14.** For
-OpenClaw it still says "Its built-in tools are not screened by this edition",
-even with the
-plugin installed. Do not repeat that sentence: for OpenClaw, the line in
-`agents list` ("OpenClaw's own tools: screened, monitor|enforce") is the
-accurate one.
+OpenClaw it says "Its built-in tools are not screened by this edition", even
+with the plugin installed. Since 1.6.15 it names the plugin and its mode
+("its own shell commands and file changes, through the innerwarden-guard
+plugin (monitor)"). On an older CLI do not repeat the old sentence: for
+OpenClaw, the line in `agents list` ("OpenClaw's own tools: screened,
+monitor|enforce") is the accurate one.
 
 **When you are the OpenClaw agent**: since 1.6.11 the CLI recognises
 OpenClaw's exec shell (`OPENCLAW_SHELL`) as an agent's shell, so
@@ -114,10 +117,11 @@ are the person's commands, and so are `allow` and `mute`; never route around a
 refusal.
 
 **Removing it**: `innerwarden agents disconnect openclaw` (the person's) takes
-the plugin out as well as the proxy wrapping. Run it before
-`innerwarden uninstall`, which leaves the plugin in place: a plugin left
-calling a binary that is gone refuses every one of OpenClaw's own tool calls in
-enforce.
+the plugin out as well as the proxy wrapping. Run it, and restart the
+gateway, before `innerwarden uninstall`. Uninstall runs the same disconnect
+itself, but a gateway still running keeps the plugin it loaded at startup,
+and a plugin calling a binary that is gone refuses every one of OpenClaw's
+own tool calls in enforce.
 
 ## Recording what reaches the agent: observe
 

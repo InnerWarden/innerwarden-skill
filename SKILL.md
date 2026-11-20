@@ -18,7 +18,8 @@ description: Install, verify and run InnerWarden day to day. InnerWarden Communi
 >   host also [`docs/managing-pro.md`](docs/managing-pro.md).
 > - **The agent is OpenClaw:** read [`docs/openclaw.md`](docs/openclaw.md)
 >   too. Its own tools are screened by a plugin since Community 1.6.11, on
->   OpenClaw 2026.9.7 or newer, and `innerwarden status` misreports that.
+>   OpenClaw 2026.9.7 or newer, and `innerwarden status` before 1.6.15
+>   misreports that.
 > - **Otherwise** (protect the agent on this machine, or the free CLI's own
 >   dashboard, `innerwarden dashboard`): this page.
 
@@ -34,13 +35,22 @@ agent:
 | Agent | How it is screened |
 |---|---|
 | Claude Code | a pre-execution hook on its `Bash` calls, on its file tools (`Write`, `Edit`, `MultiEdit`, `NotebookEdit`) and, since Community 1.6.13, on its read tools (`Read`, `Grep`, `Glob`), plus a post-tool hook that remembers where a value came from. Since 1.6.14, on macOS and Linux, a hook in enforce whose program is gone or dies refuses the call instead of letting it through |
-| Codex CLI, Gemini CLI, Cursor | their MCP servers are rewired to run through the guard's proxy, which screens the calls to those servers and, since 1.6.13, what the servers send back and list |
+| Codex CLI | since Community 1.6.15, its own `PreToolUse` hook (`~/.codex/hooks.json`) on its shell commands and on `apply_patch` changes to privileged files (Codex CLI 0.166.0 or newer), beside the MCP proxy on its MCP servers. Not screened: `write_stdin` and `tool_search`, so in enforce a shell call that only opens a shell, a language or a database client (`bash`, `python3`, `psql`) is refused |
+| Gemini CLI | since 1.6.15, its own `BeforeTool` hook (`~/.gemini/settings.json`) on its shell commands, on `write_file` and `replace` changes to privileged files, and on reads of secrets through `read_file`, `read_many_files`, `glob` and `grep_search` (Gemini CLI 0.26.0 or newer; judged on its payload, not measured on a running Gemini), beside the MCP proxy |
+| Hermes Agent | since 1.6.15, its own `hooks.pre_tool_call` hook (`~/.hermes/config.yaml`) on its `terminal` commands, the Python `execute_code` runs (as `python3 -c`), text `process_manage` types into a running process, `write_file` and `patch` changes to privileged files, and reads of secrets through `read_file` and `search_files` (Hermes Agent v0.22.5 or newer). Not screened: its browser and its MCP servers |
+| Cursor | its MCP servers are rewired to run through the guard's proxy, which screens the calls to those servers and, since 1.6.13, what the servers send back and list |
 | OpenClaw | since Community 1.6.11, the plugin `innerwarden-guard` on OpenClaw's `before_tool_call` hook screens its own `exec`, `process`, `write`, `edit` and `apply_patch` calls (OpenClaw 2026.9.7 or newer), and the MCP proxy screens calls to its MCP servers ([`docs/openclaw.md`](docs/openclaw.md)) |
 | Aider | no hook and no MCP: the person starts it inside `innerwarden contain` |
 | Goose, Windsurf, Cline | not wirable yet |
 
 `innerwarden agents list` names the mechanism it used for each one. Read it
-rather than assume.
+rather than assume. For Codex, Gemini and Hermes, `agents connect` and
+`innerwarden status` print what is screened and what is not, line by line:
+read those lines back rather than summarising them. A Codex or Gemini CLI
+connected before 1.6.15 has its MCP side only until
+`innerwarden agents connect codex` (or `gemini`) runs again. On Linux and
+macOS their enforcing hooks fail closed: a guard that is missing, killed or
+out of time refuses the call (on Windows the hook line is the program alone).
 
 For Claude Code, a file tool is judged on the file it changes: a privileged
 one (its settings, the guard's configuration, shell startup files, SSH keys,
@@ -72,8 +82,8 @@ Read this before any command that changes the guard.
 
 An AI agent **does not lower its own guard**, and the guard refuses the
 commands that would. Since Community 1.6.6, from inside Claude Code, Codex or
-Gemini, and since 1.6.11 OpenClaw's exec shell, the CLI refuses, exits 1,
-changes nothing and says so:
+Gemini, since 1.6.11 OpenClaw's exec shell and since 1.6.15 Hermes Agent's
+shell, the CLI refuses, exits 1, changes nothing and says so:
 
 - `innerwarden agents connect ... --monitor`
 - `innerwarden agents disconnect`
@@ -84,11 +94,12 @@ changes nothing and says so:
   `uninstall --dry-run` and every `--help` stay open)
 
 In Claude Code, an enforcing hook blocks all of the above with exit 2, plus
-turning a kernel control off and stopping InnerWarden's services. In OpenClaw
+turning a kernel control off and stopping InnerWarden's services; since 1.6.15
+so do the enforcing hooks of Codex, Gemini and Hermes. In OpenClaw
 the plugin, in enforce, refuses the same before they run, and also any attempt
 to remove, disable or rewrite the plugin itself. Agents wired only through the
-MCP proxy (Codex, Gemini, Cursor) have no such hook on their shell. Treat
-every one of these as the person's either way.
+MCP proxy (Cursor, and a Codex or Gemini connected before 1.6.15) have no such
+hook on their shell. Treat every one of these as the person's either way.
 
 Since Community 1.6.12 an enforcing hook reads such a command the way the
 shell runs it (behind `sudo` or `env`, as the argument of a shell or of `ssh`,
@@ -169,6 +180,45 @@ Some lines 1.6.13 refused now run: `cd` into a folder that has the guard's
 name in its path, `grep` with `eval` as a quoted pattern, `python3 -c` that
 imports `os`. `curl -K` is no longer read as `curl -k`.
 
+Since Community 1.6.15 an enforcing hook no longer lets through what it cannot
+read. What an agent meets:
+
+- **A line with a part the guard cannot read is held for review, not
+  allowed**, where that part names the program, is code that `eval`, a shell,
+  an interpreter or `source` runs, is the target of a write, sets `PATH`,
+  `LD_PRELOAD` or `BASH_ENV`, is a word of `sudo` or `env` in front of the
+  program, or is an argument of a program not known to only read or print. A
+  part is unread when the line does not show its value: a command or process
+  substitution, a variable the line does not set to text it writes out, a
+  positional parameter. A plain variable that a known program takes only as
+  data (a test filter, a commit message) does not hold the line. Write the
+  value out, and when the plain line is held too, it is the person's.
+- **The body of an `if`, a loop, `case` or `select` is judged as the command
+  it runs**, and a guard-lowering verb aimed through a variable
+  (`S=innerwarden-agent; systemctl stop $S`) as the line it spells out.
+- **Inline code is judged by the line its process call runs**: Python, Node,
+  Ruby, Perl, PHP and Deno code that builds that line is resolved first; a
+  process line it cannot read, or a local file run whole, is held for review,
+  and running what the code downloaded is refused.
+- **A shell line handed to `find -exec` or fed by `xargs`** is judged by the
+  names it is handed.
+- **Removing any place the installers write is refused** (the guard's
+  folders, units, sudo rules, launchd jobs and the like), and so is a
+  `pkill -f` whose pattern matches the guard's own processes, and a `bpftool`
+  detach of the guard's programs.
+- **An agent cannot switch its own hook off**: disconnecting or lowering its
+  own hook from its shell, starting Codex with `--disable hooks` or a `-c`
+  override of its hooks, Hermes with `--safe-mode` or `--ignore-user-config`,
+  or any of them with `CODEX_HOME`, `HERMES_HOME` or `GEMINI_CLI_HOME` moved,
+  and writing the Goose, Hermes or aider settings are refused.
+- **`innerwarden mcp approve` and `innerwarden mcp forget`** are refused to an
+  agent (section 2, MCP pins).
+
+Some lines 1.6.14 refused now run: interpreter code that only edits, writes
+or prints text that looks like a command, inline code that runs a literal
+harmless line (`os.system('clear')`), and `innerwarden check '<line>'` with
+nothing else on the line.
+
 Some ordinary work lands on the same rules, and it is the person's to run:
 copying a new `innerwarden` binary into place, writing a project's
 `.mcp.json` or `.claude/settings.json` from the shell, removing a project's
@@ -183,7 +233,9 @@ started in the home folder or at `/` names no project, so a read of a `.env`
 from there is refused; the refusal says to start in the project's own folder.
 Since 1.6.14 also: editing `authorized_keys`, the sudo rules, a crontab or a
 stored credential from the shell, in any form, and feeding a test payload to
-`innerwarden hook`. Say which command, say why it is theirs, and wait.
+`innerwarden hook`. Since 1.6.15 also: a line still held for review after you
+wrote every value in it out, and approving or forgetting an MCP tool's pin.
+Say which command, say why it is theirs, and wait.
 
 Do not tell the person the guard cannot be lowered at all. It reads the text
 of one command before it runs, and what that does not see is written down in
@@ -201,8 +253,9 @@ remove or loosen the guard yourself.
 
 What you may run, because it only reads: `innerwarden --version`, `status`,
 `agents list`, `check`, `graph`, `notify --test`, `allow --list`,
-`mute --list`, every `--help`, and since 1.6.14 `innerwarden demo` (it runs
-nothing; section 4).
+`mute --list`, every `--help`, since 1.6.14 `innerwarden demo` (it runs
+nothing; section 4), and since 1.6.15 `innerwarden mcp list` (it writes
+nothing).
 
 What tightens, and so is allowed to you, but only when the person chose
 enforce (on a machine they set to monitor it overrides their choice):
@@ -239,11 +292,11 @@ enforce, you cannot set it from inside an agent. Offer the choice in step 2.
 
 ## The sequence
 
-**Be on current versions.** At the time of writing, Community is 1.6.14 and Pro
+**Be on current versions.** At the time of writing, Community is 1.6.15 and Pro
 is 0.17.19. Check what is actually installed rather than assuming:
 
 ```sh
-innerwarden --version        # 1.6.14 or newer; it also names Pro when present
+innerwarden --version        # 1.6.15 or newer; it also names Pro when present
 innerwarden-ctl --version    # only on a Pro host: 0.17.19 or newer
 ```
 
@@ -310,6 +363,13 @@ for them. Then put the choice to the person, in these words or close to them:
   monitor; `innerwarden enforce`, which you may also run once the person chose
   enforce, turns the plugin's refusals on.
 
+For Codex, Gemini and Hermes, since 1.6.15 `connect` writes the guard into
+the agent's own pre-tool hook, beside any MCP wrapping, and keeps the
+person's own hooks in their place. Codex runs a hook only once it trusts it,
+and `connect` asks Codex to; Hermes skips a hook nobody approved, and
+`connect` records the approval in `~/.hermes/shell-hooks-allowlist.json`.
+`innerwarden agents disconnect <agent>` (the person's) takes it out again.
+
 If Pro is going on this machine too (step 3), install it **before** wiring
 enforce: an enforcing guard holds the Pro install line when you run it.
 
@@ -337,6 +397,26 @@ answer is masked, and a tool, resource or prompt description that gives the
 model orders is replaced with a short notice before the client sees it;
 `advisory` passes them on and reports them.
 
+Since 1.6.15 the proxy pins each tool's definition (name, title, description,
+input and output schema, annotations) the first time a server lists it, in
+`~/.config/innerwarden/mcp-pins.json`. In `guard` and `kill`, a tool whose
+definition changes later, a tool new mid-session or after a restart, a
+possible rename and a definition over 64 KiB are held: left out of the tool
+list the client sees and refused when called. Only the first listing of a
+server never pinned passes as heard, so updating a server that gains tools
+asks for an approval.
+
+```sh
+innerwarden mcp list                          # yours: the servers pinned, the tools held and what changed
+innerwarden mcp approve <server> <tool>       # the PERSON's: accept a held tool (or --all)
+innerwarden mcp forget <server>               # the PERSON's: drop the pins after a deliberate reinstall
+```
+
+A server is named by the id `list` prints, or its command line, never by the
+name it gives itself. Approve and forget need a terminal, and the guard
+refuses an agent that runs them: when a tool you expected is missing, read
+`mcp list` and hand the person the approve line.
+
 Never change an existing `--mode guard` wrapper to `advisory`; that lowers the
 guard, and it is the person's.
 
@@ -345,7 +425,10 @@ to guard", running it again changes nothing. Stop looping.** That agent becomes
 wirable when the user adds the MCP server they actually run, or when the
 person starts the agent under `innerwarden contain -- <command>`. OpenClaw is
 the exception to read carefully: there that line is about its MCP servers
-only, and the next line says the plugin for its own tools was installed.
+only, and the next line says the plugin for its own tools was installed. Since
+1.6.15 read Codex, Gemini and Hermes the same way: a line about their MCP
+servers says nothing about their own hook, which `connect` reports on a line
+of its own.
 
 For an agent on another machine, in a container you do not build, or in CI,
 the local hook does not apply: read
@@ -429,13 +512,14 @@ when every call sent was refused, and 1 when one would not have been stopped
 run. For Claude Code the calls go through the hook its settings run. For an
 agent wired through the MCP proxy they are judged by the proxy's own rules,
 with no server started; for OpenClaw that is its MCP side, not the plugin on
-its own tools. A demo call a hook judged is recorded, marked demo, and sends
-no alert.
+its own tools, and in 1.6.15 it does not run the Codex, Gemini or Hermes hook
+either. A demo call a hook judged is recorded, marked demo, and sends no
+alert.
 
 `demo` is not the proof below. It shows the wiring refuses; it does not show
-the running agent goes through it. In 1.6.14 `innerwarden status` counts the
-demo's calls among the decisions on record, so do not read that count as the
-agent's traffic.
+the running agent goes through it. In 1.6.14 `innerwarden status` counted the
+demo's calls among the decisions on record; since 1.6.15 it counts them apart
+and names them as demo calls.
 
 ```sh
 ./scripts/verify-install.sh
@@ -456,8 +540,10 @@ a one-off token and the last step:
 1. the person restarts the agent;
 2. the restarted agent runs `echo iw-proof-<token>` (OpenClaw, since 1.6.11,
    through its own `exec` tool, which the plugin screens; Codex, Gemini or
-   Cursor, wired through the MCP proxy only: any call to one of its MCP tools
-   with the token in it, since their own shell is not screened);
+   Hermes connected with 1.6.15 or newer, through its own shell tool, which
+   its hook screens; Cursor, or a Codex or Gemini wired through the MCP proxy
+   only: any call to one of its MCP tools with the token in it, since its own
+   shell is not screened);
 3. `./scripts/verify-install.sh --proof iw-proof-<token>`.
 
 Only that run can say **"Screening confirmed"**, and it is the one to report.
@@ -493,10 +579,12 @@ innerwarden enforce                      # when the person decides: denials beco
 ```
 
 From 1.6.11 to 1.6.14 `status` (and the dashboard's line on what judges each
-agent) still says OpenClaw's built-in tools are not screened, even with the plugin
-installed. For OpenClaw, `innerwarden agents list` is the accurate line:
+agent) said OpenClaw's built-in tools are not screened, even with the plugin
+installed. Since 1.6.15 it names the plugin and its mode ("its own shell
+commands and file changes, through the innerwarden-guard plugin (monitor)").
+On an older CLI, `innerwarden agents list` is the accurate line for OpenClaw:
 "OpenClaw's own tools: screened, monitor" (or `enforce`). Do not repeat the
-`status` sentence for OpenClaw.
+old `status` sentence for OpenClaw.
 
 `innerwarden dashboard` is a **foreground server** on <http://127.0.0.1:8788>,
 not a one-shot command: it does not return. Background it or give it a terminal
@@ -523,6 +611,22 @@ the user owns. On a remote machine reach it with
 - **Going back from 1.6.14 to 1.6.13 or older** needs `innerwarden uninstall`
   with the newer binary first: the older one does not recognise the new hook
   line. That is the person's.
+- **An upgrade to 1.6.15 does not add the Codex, Gemini or Hermes hook.** A
+  Codex or Gemini CLI connected by an earlier version keeps only its MCP side
+  until `innerwarden agents connect codex` (or `gemini`) runs again, and
+  Hermes is connected with `innerwarden agents connect hermes`. MCP pins
+  start empty, so the first listing of each server after the upgrade is
+  pinned as heard.
+- **The AI Jail hands in only what a shell needs, since 1.6.15**: `PATH`,
+  `HOME`, `USER`, `LOGNAME`, `SHELL`, `LANG`, `LC_*`, `TERM`, `TZ`, `TMPDIR`,
+  `COLORTERM` and the proxy settings, and it names every variable it kept out
+  (never a value). An agent in it that reads its API key or any other
+  variable from the environment needs `--pass-env NAME` on the person's
+  `contain` line, once per variable.
+- **An enforcing Codex, Gemini or Hermes hook refuses every call once the
+  `innerwarden` program is gone.** Removing the package by hand (apt, dnf,
+  npm) without `innerwarden agents disconnect` first leaves the agent unable
+  to run any tool until its hook is taken out of its settings.
 - **Counting decisions does not prove traffic is flowing.** Running
   `innerwarden check` yourself records decisions too, and so does the verify
   script. Only the `--proof` token, run by the agent itself, proves it.
@@ -546,13 +650,17 @@ innerwarden uninstall                 # removes the installer's copy; apt, dnf o
 rm -rf ~/.config/innerwarden          # local state and the decision log
 ```
 
-The first line comes first because `innerwarden uninstall` unwires Claude Code
-only. Every other agent was wired by rewriting its MCP config to call the guard
-by absolute path, so removing the binary first leaves those servers pointing at
-a path that no longer exists, and the command that would have fixed it went
-with the binary. For OpenClaw it also leaves the `innerwarden-guard` plugin in
-place, and in enforce a plugin that cannot reach the binary refuses every one
-of OpenClaw's own tool calls. `innerwarden uninstall --dry-run` shows what it would remove.
+The first line comes first, with the restart after it, because every wiring
+calls the guard by absolute path: MCP servers wrapped by the proxy, the
+Claude Code, Codex, Gemini and Hermes hooks and OpenClaw's
+`innerwarden-guard` plugin. Removing the binary under them leaves servers
+pointing at a path that no longer exists, and in enforce a hook or plugin
+that cannot reach the binary refuses every one of the agent's tool calls.
+`innerwarden uninstall` runs the same disconnect itself, and since 1.6.15 it
+stops, with the binary and the configuration in place, when a hook would
+outlive the binary, and names the file to fix. An agent still running keeps
+what it loaded at startup, so the restart is still the person's step before
+the binary goes. `innerwarden uninstall --dry-run` shows what it would remove.
 
 For a Pro host, [`docs/managing-pro.md`](docs/managing-pro.md) has the full
 order: kernel controls off first, then `sudo innerwarden-ctl uninstall`.

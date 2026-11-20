@@ -55,14 +55,14 @@ a compliance certificate.
 command -v innerwarden && innerwarden --version        # Community (also names Pro if present)
 command -v innerwarden-ctl && innerwarden-ctl --version # Pro host layer
 innerwarden agents list                                # is openclaw guarded, and how; "OpenClaw's own tools: screened, <mode>"
-innerwarden status                                     # is it on (its OpenClaw coverage line is wrong from 1.6.11 to 1.6.14, section 3)
+innerwarden status                                     # is it on (its OpenClaw coverage line is right since 1.6.15, wrong from 1.6.11 to 1.6.14, section 3)
 ```
 
 ## 2. Install Community (with your owner's OK)
 
 ```sh
 curl -fsSL https://innerwarden.com/free | sh    # signed binary, checked before install, no root, ~/.local/bin
-innerwarden --version                           # 1.6.11 or newer screens your own tools; current is 1.6.14
+innerwarden --version                           # 1.6.11 or newer screens your own tools; current is 1.6.15
 ```
 
 An older one upgrades with `innerwarden upgrade` (your owner's OK first).
@@ -121,10 +121,19 @@ this conversation before you can report.
   On an OpenClaw older than 2026.9.7, do not describe your own tools as
   screened.
 
-`innerwarden status` from 1.6.11 to 1.6.14 still says "Its built-in tools are
-not screened by this edition" for OpenClaw, even with the plugin installed. That is a known
-error: do not repeat it. The accurate line is the one `innerwarden agents list`
-prints, "OpenClaw's own tools: screened, monitor" (or `enforce`).
+`innerwarden status` from 1.6.11 to 1.6.14 says "Its built-in tools are not
+screened by this edition" for OpenClaw, even with the plugin installed. That
+is a known error: do not repeat it. Since 1.6.15 `status` names the plugin and
+its mode. On an older CLI the accurate line is the one `innerwarden agents
+list` prints, "OpenClaw's own tools: screened, monitor" (or `enforce`).
+
+Since 1.6.15 an OpenClaw tool call past 1 MiB is never judged on the part
+that was read: it is refused in enforce, and said to have gone unscreened in
+monitor. Your MCP servers' tools are pinned by the proxy: in enforce, a tool
+whose definition changes, or that is new after the first listing, is left
+out of your tool list and refused until your owner runs
+`innerwarden mcp approve <server> <tool>`. You may read what is held with
+`innerwarden mcp list`; approving is your owner's.
 
 Optional, for the record: `innerwarden observe install` (your owner runs it,
 then restarts the gateway) records dangerous asks that reach you in
@@ -233,9 +242,10 @@ innerwarden uninstall
 rm -rf ~/.config/innerwarden
 ```
 
-The order matters here: `innerwarden uninstall` leaves the plugin in place, and
-in enforce a plugin that cannot reach the binary refuses every one of your own
-tool calls.
+The order matters here: `innerwarden uninstall` runs the same disconnect, but a
+gateway still running keeps the plugin it loaded at startup, and in enforce a
+plugin that cannot reach the binary refuses every one of your own tool
+calls.
 
 On a Pro host, every kernel control comes off first (the full list is in
 <https://github.com/InnerWarden/innerwarden-skill/blob/master/docs/managing-pro.md>,
