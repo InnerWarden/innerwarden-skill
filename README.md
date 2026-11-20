@@ -26,7 +26,7 @@ Pick by what the user asked for, before reading anything else.
 | The user wants… | Read, in this order |
 |---|---|
 | **InnerWarden Pro on a server** (they mention a licence, a server, SSH, or the dashboard) | [`docs/pro-on-a-server.md`](docs/pro-on-a-server.md) **first**, then [`SKILL.md`](SKILL.md) for the agent half |
-| **their AI agent screened** (Claude Code, Codex, Gemini, Cursor, OpenClaw on this machine) | [`SKILL.md`](SKILL.md); for OpenClaw also [`docs/openclaw.md`](docs/openclaw.md) |
+| **their AI agent screened** (Claude Code, Codex, Gemini, Hermes, Cursor, OpenClaw on this machine) | [`SKILL.md`](SKILL.md); for OpenClaw also [`docs/openclaw.md`](docs/openclaw.md) |
 | **it is installed; run it** (is it on, what did it decide, enforce, alerts, upgrade, licence, remove) | [`docs/managing-community.md`](docs/managing-community.md), and [`docs/managing-pro.md`](docs/managing-pro.md) on a Pro host |
 | **someone must decide whether it works** | [`docs/evaluating-a-pilot.md`](docs/evaluating-a-pilot.md) |
 | **"install InnerWarden"**, and you cannot tell which | Ask. One question: *is this to protect an AI agent on a machine, or to install InnerWarden Pro on a server?* Do not guess: the two paths differ from the first command. |
@@ -38,15 +38,18 @@ does not work, and the document tells you how not to make it.
 
 **An agent does not lower its own guard.** Switching to monitor, disconnecting,
 allowing a command or removing InnerWarden are the person's to type, in their
-own terminal. The CLI refuses them inside Claude Code, Codex, Gemini or (since
-Community 1.6.11) OpenClaw's shell, an enforcing Claude Code hook or OpenClaw
-plugin blocks them too, and the skill hands them over instead of working
+own terminal. The CLI refuses them inside Claude Code, Codex, Gemini, (since
+Community 1.6.11) OpenClaw's shell or (since 1.6.15) Hermes Agent's, an
+enforcing hook (Claude Code; since 1.6.15 Codex, Gemini and Hermes) or
+OpenClaw plugin blocks them too, and the skill hands them over instead of working
 around it. Since Community 1.6.12 an enforcing hook also refuses a shell write
 to the files that carry the guard and a line that names the guard and that it
 cannot read, and since 1.6.13 starting another agent without the hook that
 screens it and a container that hands the agent the host, and since 1.6.14 a
 destructive command inside `sh -c` and a shell write of `authorized_keys`,
-the sudo rules, a crontab or a stored credential. It is a guard that
+the sudo rules, a crontab or a stored credential, and since 1.6.15 holds for
+review a line with a part it cannot read where that part decides what runs.
+It is a guard that
 reads text, and its
 [limits are written down](https://github.com/InnerWarden/inner-warden/blob/main/docs/features.md#the-guard-and-its-own-switches).
 
@@ -94,10 +97,14 @@ pre-execution hook on its Bash and file-tool calls and, since Community 1.6.13,
 on its read tools (`Read`, `Grep`, `Glob`). OpenClaw's own `exec`,
 `process`, `write`, `edit` and `apply_patch` are screened by a plugin on its
 `before_tool_call` hook since Community 1.6.11 (OpenClaw 2026.9.7 or newer),
-and its MCP servers through the proxy. For Codex, Gemini and Cursor the guard
-wraps their MCP servers instead, which screens calls to those servers (and,
-since 1.6.13, what they send back and list) and not the agents' own built-in
-tools.
+and its MCP servers through the proxy. Since Community 1.6.15 Codex CLI,
+Gemini CLI and Hermes Agent are screened through their own pre-tool hooks
+(their shell commands, changes to privileged files and, for Gemini and
+Hermes, reads of secrets), beside the proxy on Codex's and Gemini's MCP
+servers. For Cursor the guard wraps its MCP servers instead, which screens
+calls to those servers (and, since 1.6.13, what they send back and list, and
+since 1.6.15, in its blocking modes, holds a tool whose definition changed
+until the person approves it) and not its own built-in tools.
 `innerwarden agents list` names the mechanism it used. The verdict is
 computed on your machine: no command is sent anywhere for a judgement, there is
 no account, and no service has to be reachable for the guard to work.

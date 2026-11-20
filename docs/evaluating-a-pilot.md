@@ -201,9 +201,12 @@ Two conditions, or you will get a confusing result:
 
 ### MCP tool calls
 
-For agents with no hook (Cursor, Codex, Gemini), the guard wraps the MCP server
-instead. That screens the calls to those servers, not the agent's own built-in
-tools. OpenClaw has both since Community 1.6.11: a plugin screens its own
+For agents with no hook (Cursor, and a Codex or Gemini connected before
+Community 1.6.15), the guard wraps the MCP server instead. That screens the
+calls to those servers, not the agent's own built-in tools. Since 1.6.15
+Codex, Gemini and Hermes are also screened through their own pre-tool hooks,
+and the proxy pins each tool's definition and holds one that changes until
+the person runs `innerwarden mcp approve`. OpenClaw has both since Community 1.6.11: a plugin screens its own
 tools and the proxy its MCP servers; see [`openclaw.md`](openclaw.md):
 
 ```sh

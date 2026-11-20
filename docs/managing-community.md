@@ -11,10 +11,11 @@ the order things usually come up in, and who may do each one.
 ## Who does what
 
 You are an AI agent, and the guard you are managing screens you. The CLI
-refuses, inside Claude Code, Codex or Gemini, and since 1.6.11 OpenClaw's exec
-shell (a script they run included), connecting or installing in monitor,
+refuses, inside Claude Code, Codex or Gemini, since 1.6.11 OpenClaw's exec
+shell and since 1.6.15 Hermes Agent's shell (a script they run included), connecting or installing in monitor,
 disconnecting, starting a jail, `allow`, `mute`, and since 1.6.9 `dry-run` /
-`monitor` and `uninstall`. An enforcing Claude Code hook blocks the same, and
+`monitor` and `uninstall`. An enforcing Claude Code hook blocks the same
+(since 1.6.15 so do the enforcing hooks of Codex, Gemini and Hermes), and
 so does OpenClaw's `innerwarden-guard` plugin in enforce. Treat every lowering command as the person's,
 whatever the agent and whatever lets it through. That is the product working,
 not something to route around.
@@ -39,17 +40,24 @@ secret, judged as `cat` of the same file is (`~/.ssh/config` and a stored login
 included). Since 1.6.14 it also gives a command inside `sh -c` the verdict
 the same command typed directly gets, refuses every shell write of
 `authorized_keys`, the sudo rules, a crontab, a stored credential or
-`~/.ssh/config`, and refuses running the guard's own hook. The rest of the list, and what ordinary work it costs, is in
+`~/.ssh/config`, and refuses running the guard's own hook. Since 1.6.15 it
+holds for review a line with a part it cannot read (a command substitution,
+a variable the line does not set) where that part names the program, is code
+a shell or an interpreter runs, or is what the line writes to; write the
+value out, and if the plain line is held too, it is the person's. It also
+refuses an agent switching its own hook off, and `innerwarden mcp approve`
+and `forget`. The rest of the list, and what ordinary work it costs, is in
 [`../SKILL.md`](../SKILL.md), "You are inside the thing being guarded".
 
 | You may run it | Only the person runs it, in their own terminal |
 |---|---|
-| `innerwarden status`, `agents list`, `check`, `graph`, `notify --test`, `demo` (1.6.14) | `innerwarden agents connect ... --monitor` |
+| `innerwarden status`, `agents list`, `check`, `graph`, `notify --test`, `demo` (1.6.14), `mcp list` (1.6.15) | `innerwarden agents connect ... --monitor` |
 | `allow --list`, `mute --list`, every `--help` | `innerwarden agents disconnect` |
 | `innerwarden agents connect <agent>` (enforce, only when the person chose it) | `innerwarden install <agent> --monitor` |
 | `innerwarden enforce`, `innerwarden install claude-code` (same condition) | `innerwarden dry-run` (back to monitor) |
 | `innerwarden contain --dry-run -- <command>` | `innerwarden contain ...` (starting a jail, `--pass-env` included) |
 | `innerwarden upgrade --check` | `innerwarden allow "<glob>"`, `innerwarden mute <rule>` |
+| | `innerwarden mcp approve`, `innerwarden mcp forget` (1.6.15) |
 | | `innerwarden graph --clear`, `innerwarden uninstall` |
 
 When a command is the person's, give them the exact line and one sentence on
@@ -64,13 +72,21 @@ innerwarden status        # per agent: what is judged before it runs, and what i
 innerwarden agents list   # per agent: guarded or not, and the mechanism (hook, MCP proxy, OpenClaw's plugin)
 ```
 
-`status` speaks plainly about coverage, with one known exception from 1.6.11
-to 1.6.14: for OpenClaw it still says "Its built-in tools are not screened
-by this edition", even when the `innerwarden-guard` plugin is installed and screening
-them. For OpenClaw, read the line `agents list` prints, "OpenClaw's own tools:
-screened, monitor" (or `enforce`), which is the accurate one, and do not repeat
-the `status` sentence. For every other agent, repeat what `status` says; do not
-improve on it.
+`status` speaks plainly about coverage. From 1.6.11 to 1.6.14 it had one
+known exception: for OpenClaw it said "Its built-in tools are not screened
+by this edition", even when the `innerwarden-guard` plugin was installed and
+screening them. Since 1.6.15 it names the plugin and its mode. On an older
+CLI, read for OpenClaw the line `agents list` prints, "OpenClaw's own tools:
+screened, monitor" (or `enforce`), which is the accurate one, and do not
+repeat the old `status` sentence. For every other agent, repeat what `status`
+says; do not improve on it.
+
+For Codex, Gemini and Hermes, `status` in 1.6.15 says what their own hook
+screens, line by line, and what it leaves out. When it says the hook is not
+on (not written, not trusted by Codex, not approved in Hermes, or its
+program gone), the line names the step that fixes it, usually
+`innerwarden agents connect <agent>` (yours once the person chose enforce;
+the `--monitor` form is the person's), then a restart of that agent.
 
 For Claude Code, `status` in 1.6.13 names the read tools it judges. When its
 line is `[off]` and says the read tools "can read a private key or a stored
@@ -196,9 +212,36 @@ may show what it would do:
 innerwarden contain --dry-run -- <command>
 ```
 
+Since 1.6.15 the jail hands in only what a shell needs of the person's
+environment: `PATH`, `HOME`, `USER`, `LOGNAME`, `SHELL`, `LANG`, `LC_*`,
+`TERM`, `TZ`, `TMPDIR`, `COLORTERM` and the proxy settings (`*_PROXY`,
+`NO_PROXY`). It names every variable it kept out, never a value. An agent that
+reads its API key or any other variable from the environment needs
+`--pass-env NAME` on the person's line, once per variable.
+
 On Ubuntu 26.04, if the jail cannot start, the distribution's bubblewrap
 AppArmor profile may need loading:
-`sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns-restrict`.
+`sudo apparmor_parser -r /etc/apparmor.d/bwrap-userns-restrict`. Since 1.6.15
+a Linux kernel that refuses an unprivileged user namespace gets the reason
+and the setting that resolves it, and nothing runs unjailed.
+
+## An MCP tool went missing or is refused
+
+Since 1.6.15 the MCP proxy pins each tool's definition the first time a
+server lists it. In `guard` and `kill`, a tool whose definition changes, a
+tool new after the first listing (mid-session or after a restart), a possible
+rename and a definition over 64 KiB are held: left out of the list the agent
+sees and refused when called. Updating a server that gains tools is the
+common case.
+
+```sh
+innerwarden mcp list                         # you may run it: what is pinned, what is held and what changed
+innerwarden mcp approve <server> <tool>      # the person, at their terminal (or --all)
+innerwarden mcp forget <server>              # the person, after reinstalling a server on purpose
+```
+
+Read `mcp list` back to the person, with what changed, and hand them the
+approve line. The guard refuses an agent that runs approve or forget.
 
 ## Upgrading
 
@@ -223,6 +266,13 @@ so. Going back from 1.6.14 to 1.6.13 or older needs `innerwarden uninstall`
 with the newer binary first (the person's): the older one does not recognise
 the new hook line.
 
+`upgrade` to 1.6.15 rewires the Claude Code hooks but does not add the new
+Codex, Gemini or Hermes hooks: a Codex or Gemini CLI connected by an earlier
+version keeps only its MCP side until `innerwarden agents connect codex` (or
+`gemini`) runs again, and Hermes is connected with
+`innerwarden agents connect hermes`. MCP pins start empty, so the first
+listing of each server after the upgrade is pinned and asks for no approval.
+
 On a Pro host the Pro installer does not upgrade an existing free CLI, so the
 person upgrades it this way too.
 
@@ -238,6 +288,10 @@ innerwarden uninstall                 # the installer's copy; apt, dnf or npm re
 rm -rf ~/.config/innerwarden          # local state and the decision log
 ```
 
-`disconnect` comes first because `uninstall` unwires Claude Code only; every
-other agent's MCP config points at the guard by absolute path and would be left
-pointing at nothing.
+`disconnect` comes first, with the restart, because every wiring calls the
+guard by absolute path (the MCP wrappers, the Claude Code, Codex, Gemini and
+Hermes hooks, OpenClaw's plugin), and an enforcing hook whose program is gone
+refuses every tool call. `uninstall` runs the same disconnect itself, and
+since 1.6.15 it stops, binary and configuration in place, when a hook would
+outlive the binary, and names the file to fix. Before removing the package
+with apt, dnf or npm, disconnect first in the same way.

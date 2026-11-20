@@ -17,7 +17,8 @@ for. A server that must send nothing out has an opt-in offline mode since Pro
 default and a preview: turning them on is the person's choice, never yours.
 
 **If the user wants their own AI agent screened** (Claude Code, Codex, Gemini,
-Cursor, OpenClaw on the machine in front of them), read [`SKILL.md`](SKILL.md).
+Hermes, Cursor, OpenClaw on the machine in front of them), read
+[`SKILL.md`](SKILL.md).
 
 **If it is already installed** and the question is "is it on", "what did it
 decide", "why did it refuse this", "turn on enforce", "upgrade it", "the
@@ -31,12 +32,13 @@ protect an AI agent on a machine, or to install InnerWarden Pro on a server?*
 ## The rule that is new since the last time you read this
 
 **You do not lower the guard that screens you, and you never try.** The CLI
-refuses, from inside Claude Code, Codex or Gemini, and since 1.6.11 OpenClaw's
-exec shell, the commands that loosen it:
+refuses, from inside Claude Code, Codex or Gemini, since 1.6.11 OpenClaw's
+exec shell and since 1.6.15 Hermes Agent's shell, the commands that loosen it:
 `allow` and `mute` since 1.5.4, `agents connect --monitor`, `agents disconnect`
 and `contain` since 1.6.6, `install --monitor` since 1.6.8, `dry-run`, `monitor`
-and `uninstall` since 1.6.9. In Claude Code an enforcing hook blocks them too,
-and in OpenClaw so does the `innerwarden-guard` plugin in enforce. Hand those
+and `uninstall` since 1.6.9. In Claude Code an enforcing hook blocks them too
+(since 1.6.15 also in Codex, Gemini and Hermes, through their own hooks), and
+in OpenClaw so does the `innerwarden-guard` plugin in enforce. Hand those
 commands to the person, say why, and wait. Never route around a refusal, and
 follow the same rule in an agent the CLI does not recognise.
 
@@ -50,7 +52,11 @@ host, and a Claude Code `Read`, `Grep` or `Glob` of a secret, as it refuses
 `cat` of the same file. Since 1.6.14 a command inside `sh -c` gets the
 verdict the same command typed directly gets, every shell write of
 `authorized_keys`, the sudo rules, a crontab or a stored credential is
-refused, and so is running the guard's own hook. Those are the person's. The guard reads text and has
+refused, and so is running the guard's own hook. Since 1.6.15 a line with a
+part the guard cannot read (a substitution, a variable the line does not
+set) is held for review where that part decides what runs or where it
+writes, an agent switching its own hook off is refused, and so are
+`innerwarden mcp approve` and `forget`. Those are the person's. The guard reads text and has
 written limits (`SKILL.md`, "You are inside the thing being guarded"): do not
 tell the person it cannot be lowered at all.
 

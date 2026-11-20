@@ -23,9 +23,12 @@ verdict before it runs, over whichever surface that agent exposes: a
 pre-execution hook for Claude Code (its shell, its file tools and, since
 Community 1.6.13, its read tools); for OpenClaw (Community 1.6.11 or newer,
 OpenClaw 2026.9.7 or newer) a plugin on its `before_tool_call` hook for its own
-`exec`, `process`, `write`, `edit` and `apply_patch`, plus its MCP servers; the
-MCP path for Cursor, Codex and Gemini (for those, calls to their MCP servers,
-not their built-in tools). Since 1.6.13 the MCP path also screens what a server
+`exec`, `process`, `write`, `edit` and `apply_patch`, plus its MCP servers;
+since Community 1.6.15 the agent's own pre-tool hook for Codex CLI, Gemini CLI
+and Hermes Agent (their shell commands, changes to privileged files and, for
+Gemini and Hermes, reads of secrets), beside the MCP path for Codex's and
+Gemini's servers; the MCP path for Cursor (calls to its MCP servers, not its
+built-in tools). Since 1.6.13 the MCP path also screens what a server
 sends back and lists: in its blocking mode a secret-shaped value in an answer
 is masked and a tool description that gives the model orders is replaced with
 a short notice. 1.6.13 ships 85 rules derived from the Agent Threat Rules
